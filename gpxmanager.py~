@@ -53,4 +53,3 @@ class GPXTrackContainer:
             for segment in t.segments:
                 for point in segment.points:
                     track.add_point(osmgpsmap.MapPoint.new_degrees(point.latitude, point.longitude))
-        return track

@@ -115,7 +115,7 @@ class TrackApp(object):
         self.liststore_gpx.clear()
         for gpx_track in self.gpx_manager.gpx_tracks:
             (_,file_name) = os.path.split(gpx_track.get_file_name())
-            self.liststore_gpx.append([file_name, gpx_track.get_point_count()])
+            self.liststore_gpx.append([file_name, gpx_file.get_point_count()])
 
     def get_treeview_index(self):
         selection = self.treeview_gpx.get_selection()
