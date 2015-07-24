@@ -15,6 +15,7 @@ Gdk.threads_init()
 
 from gi.repository import OsmGpsMap as osmgpsmap
 import gpxmanager
+import testlayer
 
 class TrackApp(object):
     def __init__(self):
@@ -67,6 +68,7 @@ class TrackApp(object):
                     show_zoom=True,
                     show_crosshair=True)
         )
+        self.osm.layer_add(testlayer.CustomLayer())
         self.osm.set_size_request(400,400)
         self.map_box.pack_start(self.osm, True, True, 0)
         self.osm.show()
