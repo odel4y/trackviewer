@@ -16,6 +16,12 @@ class CustomLayer(GObject.GObject, osmgpsmap.MapLayer):
         GObject.GObject.__init__(self)
 
     def do_draw(self, gpsmap, cr):
+        (p1,_) = gpsmap.get_bbox()
+        print gpsmap.get_property("longitude")
+        cr.set_source_rgba (0, 0, 1, 0.40);
+        cr.move_to(100,100)
+        cr.line_to(150,150)
+        cr.stroke()
         print 'do_draw'
 
     def do_render(self, gpsmap):
