@@ -43,6 +43,8 @@ class TrackApp(object):
         rb_gsat = self.builder.get_object("radiobutton_gsatellite")
         rb_gsat.set_image(Gtk.Image.new_from_file("data/media/gsatellite_logo.png")) 
         
+        self.label_info = self.builder.get_object("label_info")
+        
         self.gpx_manager = gpxmanager.GPXManager()
         
         self.win.show_all()
@@ -94,7 +96,20 @@ class TrackApp(object):
             self.gpx_manager.open_gpx(dialog.get_filename())
 
         dialog.destroy()
+        self.update_information_label()
 
+    def update_information_label(self):
+        gpx_str = ""
+        
+        if self.gpx_manager.gpx_track:
+            (_,short_fn) = os.path.split(self.gpx_manager.gpx_filename)
+            gpx_str = """<b>Datei:</b> %s
+<b>Punkte:</b> %d
+<b>Angezeigte Punkte:</b> %d""" % (short_fn, self.gpx_manager.get_gpx_point_count(), self.gpx_manager.get_gpx_point_count())
+        else:
+            gpx_str = "Keine GPX-Datei geladen"
+            
+        self.label_info.set_markup(gpx_str)
 
 if __name__ == "__main__":
     TrackApp()
