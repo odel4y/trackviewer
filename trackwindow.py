@@ -101,11 +101,11 @@ class TrackApp(object):
     def update_information_label(self):
         gpx_str = ""
         
-        if self.gpx_manager.gpx_track:
+        if self.gpx_manager.has_track():
             (_,short_fn) = os.path.split(self.gpx_manager.gpx_filename)
             gpx_str = """<b>Datei:</b> %s
 <b>Punkte:</b> %d
-<b>Angezeigte Punkte:</b> %d""" % (short_fn, self.gpx_manager.get_gpx_point_count(), self.gpx_manager.get_gpx_point_count())
+<b>Angezeigte Punkte:</b> %d""" % (short_fn, self.gpx_manager.track_point_count, self.gpx_manager.track_point_count)
         else:
             gpx_str = "Keine GPX-Datei geladen"
             
