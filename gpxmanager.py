@@ -1,5 +1,6 @@
 import gpxpy
 from gi.repository import OsmGpsMap as osmgpsmap
+from math import floor
 
 class GPXManager:
     def __init__(self):
@@ -30,15 +31,16 @@ class GPXManager:
 
     def get_track_point_iter(self, w_width=None, w_center=None):
         """Returns an iterator over the points of the track. Allows a definition of a window by width and center percentage"""
-        if (w_width != None) and (w_center != None):
-            start_p, end_p = self._calc_borders_from_moving_window(w_width, w_center)
-        else:
-            start_p, end_p = 0, self.track_point_count
-        for track in self._gpx_track.tracks:
-            for segment in track.segments:
-                for i, point in enumerate(segment.points):
-                    if start_p <= i < end_p:
-                        yield (point.longitude, point.latitude)
+        if self.has_track():
+            if (w_width != None) and (w_center != None):
+                start_p, end_p = self._calc_borders_from_moving_window(w_width, w_center)
+            else:
+                start_p, end_p = 0, self.track_point_count
+            for track in self._gpx_track.tracks:
+                for segment in track.segments:
+                    for i, point in enumerate(segment.points):
+                        if start_p <= i < end_p:
+                            yield (point.longitude, point.latitude)
 
     def _calc_borders_from_moving_window(self, width, center):
         """Restricts the track to a window of given width and a center position (center in percent)"""
@@ -52,4 +54,5 @@ class GPXManager:
         end_p = center_p + half_width
         return (start_p, end_p)
         
+            
         

@@ -15,7 +15,8 @@ Gdk.threads_init()
 
 from gi.repository import OsmGpsMap as osmgpsmap
 import gpxmanager
-import testlayer
+#import testlayer
+import tracklayer
 
 class TrackApp(object):
     def __init__(self):
@@ -26,13 +27,18 @@ class TrackApp(object):
             "onOSMButtonClicked": lambda b: self.toggle_mapsource(b,osmgpsmap.MapSource_t.OPENSTREETMAP),
             "onGStrButtonClicked": lambda b: self.toggle_mapsource(b,osmgpsmap.MapSource_t.GOOGLE_STREET),
             "onGSatButtonClicked": lambda b: self.toggle_mapsource(b,osmgpsmap.MapSource_t.GOOGLE_SATELLITE),
-            "onOpenGPXClicked": self.on_open_gpx_clicked
+            "onOpenGPXClicked": self.on_open_gpx_clicked,
+            "onTracklengthChanged": lambda w: self.set_track_moving_window()
         }
         self.builder = Gtk.Builder()
         self.builder.add_from_file("trackwindow.glade")
         self.builder.connect_signals(self.handlers)
         self.win = self.builder.get_object("window1")
         self.map_box = self.builder.get_object("map_box")
+        
+        self.gpx_manager = gpxmanager.GPXManager()
+        self.track_layer = tracklayer.TrackLayer(self.gpx_manager)
+        
         self.create_osm()
         
         # Load icons for map buttons
@@ -44,8 +50,11 @@ class TrackApp(object):
         rb_gsat.set_image(Gtk.Image.new_from_file("data/media/gsatellite_logo.png")) 
         
         self.label_info = self.builder.get_object("label_info")
-        
-        self.gpx_manager = gpxmanager.GPXManager()
+        self.checkbutton_tracklength = self.builder.get_object("checkbutton_tracklength")
+        self.adjustment_width = self.builder.get_object("adjustment_width")
+        self.adjustment_center = self.builder.get_object("adjustment_center")
+        #self.spinbutton_tracklength = self.builder.get_object("spinbutton_tracklength")
+        #self.scale_position = self.builder.get_object("scale_position")
         
         self.win.show_all()
         Gtk.main()
@@ -65,7 +74,7 @@ class TrackApp(object):
                     show_zoom=True,
                     show_crosshair=True)
         )
-        self.osm.layer_add(testlayer.CustomLayer())
+        self.osm.layer_add(self.track_layer)
         self.osm.set_size_request(400,400)
         self.map_box.pack_start(self.osm, True, True, 0)
         self.osm.show()
@@ -97,6 +106,7 @@ class TrackApp(object):
 
         dialog.destroy()
         self.update_information_label()
+        self.center_view_on_track()
 
     def update_information_label(self):
         gpx_str = ""
@@ -110,6 +120,21 @@ class TrackApp(object):
             gpx_str = "Keine GPX-Datei geladen"
             
         self.label_info.set_markup(gpx_str)
+            
+    def set_track_moving_window(self):
+        window_activated = self.checkbutton_tracklength.get_active()
+        if window_activated:
+            width = self.adjustment_width.get_value()
+            center_pos = self.adjustment_center.get_value()/100.0
+            self.track_layer.set_moving_window(width, center_pos)
+        else:
+            self.track_layer.set_moving_window(None, None)
+        self.osm.map_redraw()
+    
+    def center_view_on_track(self):
+        lon, lat = self.gpx_manager.get_track_point_iter().next()
+        self.osm.set_center(lat, lon)
+            
 
 if __name__ == "__main__":
     TrackApp()

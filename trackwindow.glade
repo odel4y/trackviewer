@@ -6,6 +6,7 @@
     <property name="upper">100</property>
     <property name="step_increment">0.10000000000000001</property>
     <property name="page_increment">10</property>
+    <signal name="value-changed" handler="onTracklengthChanged" swapped="no"/>
   </object>
   <object class="GtkAdjustment" id="adjustment_width">
     <property name="lower">1</property>
@@ -13,6 +14,7 @@
     <property name="value">100</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
+    <signal name="value-changed" handler="onTracklengthChanged" swapped="no"/>
   </object>
   <object class="GtkGrid" id="grid1">
     <property name="visible">True</property>
@@ -273,6 +275,9 @@
                               <object class="GtkLabel" id="label1">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
+                                <property name="hexpand">False</property>
+                                <property name="xalign">0</property>
                                 <property name="label" translatable="yes">Anzahl Punkte:</property>
                               </object>
                               <packing>
@@ -283,9 +288,10 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkSpinButton" id="spinbutton2">
+                              <object class="GtkSpinButton" id="spinbutton_tracklength">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="hexpand">True</property>
                                 <property name="text" translatable="yes">100</property>
                                 <property name="adjustment">adjustment_width</property>
                                 <property name="value">100</property>
@@ -298,17 +304,34 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkScale" id="scale2">
+                              <object class="GtkScale" id="scale_position">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="hexpand">True</property>
                                 <property name="adjustment">adjustment_center</property>
                                 <property name="fill_level">100</property>
                                 <property name="round_digits">1</property>
                               </object>
                               <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">1</property>
+                                <property name="width">1</property>
+                                <property name="height">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="label3">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="halign">start</property>
+                                <property name="hexpand">False</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">Position:</property>
+                              </object>
+                              <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">2</property>
+                                <property name="width">1</property>
                                 <property name="height">1</property>
                               </packing>
                             </child>
@@ -317,13 +340,14 @@
                       </object>
                     </child>
                     <child type="label">
-                      <object class="GtkCheckButton" id="checkbutton1">
+                      <object class="GtkCheckButton" id="checkbutton_tracklength">
                         <property name="label" translatable="yes">Tracklänge einschränken</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="xalign">0</property>
                         <property name="draw_indicator">True</property>
+                        <signal name="toggled" handler="onTracklengthChanged" swapped="no"/>
                       </object>
                     </child>
                   </object>
