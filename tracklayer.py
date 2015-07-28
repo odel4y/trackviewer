@@ -12,11 +12,9 @@ def overrides(interface_class):
         return method
     return overrider
 
-class TrackLayer(GObject.GObject, osmgpsmap.MapLayer):
-    def __init__(self, gpsmap, gpxm):
+class BufferedLayer(GObject.GObject, osmgpsmap.MapLayer):
+    def __init__(self, gpsmap):
         GObject.GObject.__init__(self)
-        #self.osm = gpsmap
-        self.gpx_manager = gpxm
         self.surface = None
         gpsmap.connect("size-allocate", self.do_resize)
         
@@ -30,6 +28,25 @@ class TrackLayer(GObject.GObject, osmgpsmap.MapLayer):
             cr.set_source_surface(self.surface, 0, 0)
             cr.paint()
         print 'do_draw'
+
+    def do_render(self, gpsmap):
+        print 'do_render'
+
+    def do_busy(self):
+        print 'do_busy'
+        return False
+
+    def do_button_press(self, gpsmap, gdkeventbutton):
+        print 'do_button_press'
+        return False
+GObject.type_register(BufferedLayer)
+
+
+class TrackLayer(BufferedLayer):
+    def __init__(self, gpsmap, gpxm):
+        #GObject.GObject.__init__(self)
+        BufferedLayer.__init__(self, gpsmap)
+        self.gpx_manager = gpxm
 
     def do_render(self, gpsmap):
         if self.gpx_manager.has_track():
@@ -51,13 +68,4 @@ class TrackLayer(GObject.GObject, osmgpsmap.MapLayer):
             cr.stroke()
 
         print 'do_render'
-
-    def do_busy(self):
-        print 'do_busy'
-        return False
-
-    def do_button_press(self, gpsmap, gdkeventbutton):
-        print 'do_button_press'
-        return False
-        
 GObject.type_register(TrackLayer)
