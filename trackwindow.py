@@ -37,7 +37,6 @@ class TrackApp(object):
         self.map_box = self.builder.get_object("map_box")
         
         self.gpx_manager = gpxmanager.GPXManager()
-        self.track_layer = tracklayer.TrackLayer(self.gpx_manager)
         
         self.create_osm()
         
@@ -60,7 +59,7 @@ class TrackApp(object):
         Gtk.main()
         
     def create_osm(self, reconstruct=False, map_source=osmgpsmap.MapSource_t.OPENSTREETMAP):
-        """Creates or reconstructs the Map with given Map Source and coordinates"""
+        """Creates or reconstructs the Map and Layers with given Map Source and coordinates"""
         print "Creating Osm..."
         lat, lon, zoom = (49.8725, 8.6498, 13)
         if reconstruct:
@@ -74,7 +73,8 @@ class TrackApp(object):
                     show_zoom=True,
                     show_crosshair=True)
         )
-        self.osm.layer_add(self.track_layer)
+        # Add the extra drawing layers
+        self.osm.layer_add(tracklayer.TrackLayer(self.osm, self.gpx_manager))
         self.osm.set_size_request(400,400)
         self.map_box.pack_start(self.osm, True, True, 0)
         self.osm.show()
