@@ -11,7 +11,7 @@ def overrides(interface_class):
         return method
     return overrider
 
-class TrackLayer(GObject.GObject, osmgpsmap.MapLayer):
+class OSMLayer(GObject.GObject, osmgpsmap.MapLayer):
     def __init__(self, gpxm):
         GObject.GObject.__init__(self)
         self.gpx_manager = gpxm
@@ -19,18 +19,18 @@ class TrackLayer(GObject.GObject, osmgpsmap.MapLayer):
         self.w_position = None
 
     def do_draw(self, gpsmap, cr):
-        if self.gpx_manager.has_track():
-            cr.set_source_rgba (0, 0, 1, 1.00)
-            init = True
-            for lon, lat in self.gpx_manager.get_track_point_iter(self.w_width, self.w_position):
-                osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
-                (next_x, next_y) = gpsmap.convert_geographic_to_screen(osm_p)
-                if init:
-                    cr.move_to(next_x, next_y)
-                    init = False
-                else:
-                    cr.line_to(next_x, next_y)
-            cr.stroke()
+#        if self.gpx_manager.has_track():
+#            cr.set_source_rgba (0, 0, 1, 1.00)
+#            init = True
+#            for lon, lat in self.gpx_manager.get_track_point_iter(self.w_width, self.w_position):
+#                osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
+#                (next_x, next_y) = gpsmap.convert_geographic_to_screen(osm_p)
+#                if init:
+#                    cr.move_to(next_x, next_y)
+#                    init = False
+#                else:
+#                    cr.line_to(next_x, next_y)
+#            cr.stroke()
 
         print 'do_draw'
 
@@ -45,9 +45,8 @@ class TrackLayer(GObject.GObject, osmgpsmap.MapLayer):
     def do_button_press(self, gpsmap, gdkeventbutton):
         print 'do_button_press'
         return False
+
+    def download_osm_bbox(self, lon1, lat1, lon2, lat2):
+        pass
         
-    def set_moving_window(self, width, position):
-        self.w_width = width
-        self.w_position = position
-        
-GObject.type_register(TrackLayer)
+GObject.type_register(OSMLayer)
