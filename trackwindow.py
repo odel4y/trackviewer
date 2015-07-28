@@ -28,7 +28,8 @@ class TrackApp(object):
             "onGStrButtonClicked": lambda b: self.toggle_mapsource(b,osmgpsmap.MapSource_t.GOOGLE_STREET),
             "onGSatButtonClicked": lambda b: self.toggle_mapsource(b,osmgpsmap.MapSource_t.GOOGLE_SATELLITE),
             "onOpenGPXClicked": self.on_open_gpx_clicked,
-            "onTracklengthChanged": lambda w: self.set_track_moving_window()
+            "onTracklengthChanged": lambda w: self.set_track_moving_window(),
+            "onOSMLoadClicked": self.on_osm_load_clicked
         }
         self.builder = Gtk.Builder()
         self.builder.add_from_file("trackwindow.glade")
@@ -134,7 +135,17 @@ class TrackApp(object):
     def center_view_on_track(self):
         lon, lat = self.gpx_manager.get_track_window_iter().next()
         self.osm.set_center(lat, lon)
-            
+       
+    def on_osm_load_clicked(self, w):
+        """On maximum zoom level -> download osm data and store it"""
+        zoom = self.osm.get_property("zoom")
+        if (zoom >= 17):
+            p1, p2 = self.osm.get_bbox()
+            lat1, lon1 = p1.get_degrees()
+            lat2, lon2 = p2.get_degrees()
+            self.gpx_manager.download_osm_map(lon1, lat1, lon2, lat2)
+        else:
+            print "Zum Download der OSM-Daten bitte maximale Zoom-Stufe wählen"
 
 if __name__ == "__main__":
     TrackApp()

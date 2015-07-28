@@ -8,7 +8,7 @@ import cairo
 
 class BufferedLayer(GObject.GObject, osmgpsmap.MapLayer):
     """The BufferedLayer only rerenders when the Map dragging stops. When the map
-    is moved only a drawing buffer is painted and moved with the dragging (performance)"""
+    is moved only a drawing buffer is painted and moved accordingly (performance)"""
     def __init__(self, gpsmap):
         GObject.GObject.__init__(self)
         self.surface = None
@@ -79,5 +79,14 @@ class TrackLayer(BufferedLayer):
                 else:
                     cr.line_to(next_x, next_y)
             cr.stroke()
-
 GObject.type_register(TrackLayer)
+
+class OSMLayer(BufferedLayer):
+    def __init__(self, gpsmap, gpxm):
+        BufferedLayer.__init__(self, gpsmap)
+        self.gpx_manager = gpxm
+        
+    def do_render(self, gpsmap):
+        if self.gpx_manager.has_osm_data():
+            pass
+GObject.type_register(OSMLayer)
