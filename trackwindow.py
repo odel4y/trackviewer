@@ -126,13 +126,13 @@ class TrackApp(object):
         if window_activated:
             width = self.adjustment_width.get_value()
             center_pos = self.adjustment_center.get_value()/100.0
-            self.track_layer.set_moving_window(width, center_pos)
+            self.gpx_manager.set_track_moving_window(width, center_pos)
         else:
-            self.track_layer.set_moving_window(None, None)
+            self.gpx_manager.set_track_moving_window(None, None)
         self.osm.map_redraw()
     
     def center_view_on_track(self):
-        lon, lat = self.gpx_manager.get_track_point_iter().next()
+        lon, lat = self.gpx_manager.get_track_window_iter().next()
         self.osm.set_center(lat, lon)
             
 

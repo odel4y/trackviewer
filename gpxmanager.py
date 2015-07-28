@@ -1,12 +1,15 @@
 import gpxpy
 from gi.repository import OsmGpsMap as osmgpsmap
 from math import floor
+import osmapi
 
 class GPXManager:
     def __init__(self):
         self._gpx_track = None
         self.gpx_filename = ""
         self.track_point_count = 0
+        self._w_width = None
+        self._w_center = None
         
     def open_gpx(self,fn):
         """Opens a gpx file and stores it"""
@@ -29,7 +32,7 @@ class GPXManager:
 
     def has_track(self): return self._gpx_track != None
 
-    def get_track_point_iter(self, w_width=None, w_center=None):
+    def get_track_iter(self, w_width=None, w_center=None):
         """Returns an iterator over the points of the track. Allows a definition of a window by width and center percentage"""
         if self.has_track():
             if (w_width != None) and (w_center != None):
@@ -41,6 +44,9 @@ class GPXManager:
                     for i, point in enumerate(segment.points):
                         if start_p <= i < end_p:
                             yield (point.longitude, point.latitude)
+
+    def get_track_window_iter(self):
+        return self.get_track_iter(self._w_width, self._w_center)
 
     def _calc_borders_from_moving_window(self, width, center):
         """Restricts the track to a window of given width and a center position (center in percent)"""
@@ -54,5 +60,12 @@ class GPXManager:
         end_p = center_p + half_width
         return (start_p, end_p)
         
+    def has_osm_data(self): pass
+        
+    def download_osm_bbox(self, lon1, lat1, lon2, lat2):
+        pass
             
+    def set_track_moving_window(self, w_width, w_center):
+        self._w_width = w_width
+        self._w_center = w_center
         

@@ -46,7 +46,5 @@ class OSMLayer(GObject.GObject, osmgpsmap.MapLayer):
         print 'do_button_press'
         return False
 
-    def download_osm_bbox(self, lon1, lat1, lon2, lat2):
-        pass
         
 GObject.type_register(OSMLayer)
