@@ -15,7 +15,6 @@ Gdk.threads_init()
 
 from gi.repository import OsmGpsMap as osmgpsmap
 import gpxmanager
-#import testlayer
 import tracklayer
 
 class TrackApp(object):
@@ -75,7 +74,8 @@ class TrackApp(object):
                     show_crosshair=True)
         )
         # Add the extra drawing layers
-        self.osm.layer_add(tracklayer.TrackLayer(self.osm, self.gpx_manager))
+        tl = tracklayer.TrackLayer(self.osm, self.gpx_manager)
+        self.osm.layer_add(tl)
         self.osm.set_size_request(400,400)
         self.map_box.pack_start(self.osm, True, True, 0)
         self.osm.show()

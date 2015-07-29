@@ -10,7 +10,7 @@ class BufferedLayer(GObject.GObject, osmgpsmap.MapLayer):
     """The BufferedLayer only rerenders when the Map dragging stops. When the map
     is moved only a drawing buffer is painted and moved accordingly (performance)"""
     def __init__(self, gpsmap):
-        GObject.GObject.__init__(self)
+        super(BufferedLayer, self).__init__()
         self.surface = None
         self._dragging = False
         self._drag_startx = self._drag_starty = 0
@@ -58,7 +58,7 @@ GObject.type_register(BufferedLayer)
 
 class TrackLayer(BufferedLayer):
     def __init__(self, gpsmap, gpxm):
-        BufferedLayer.__init__(self, gpsmap)
+        super(TrackLayer, self).__init__( gpsmap)
         self.gpx_manager = gpxm
 
     def do_render(self, gpsmap):
@@ -81,12 +81,3 @@ class TrackLayer(BufferedLayer):
             cr.stroke()
 GObject.type_register(TrackLayer)
 
-class OSMLayer(BufferedLayer):
-    def __init__(self, gpsmap, gpxm):
-        BufferedLayer.__init__(self, gpsmap)
-        self.gpx_manager = gpxm
-        
-    def do_render(self, gpsmap):
-        if self.gpx_manager.has_osm_data():
-            pass
-GObject.type_register(OSMLayer)
