@@ -59,16 +59,7 @@ class GPXManager:
         start_p = center_p - half_width
         end_p = center_p + half_width
         return (start_p, end_p)
-        
-    def has_osm_data(self): pass
-        
-    def download_osm_map(self, lon1, lat1, lon2, lat2):
-        MyApi = OsmApi()
-        print lon1, lat1
-        print lon2, lat2
-        #print MyApi.Map(min(lon1,lon2), min(lat1,lat2), max(lon1,lon2), max(lat1,lat2))
-            
+    
     def set_track_moving_window(self, w_width, w_center):
         self._w_width = w_width
         self._w_center = w_center
-        

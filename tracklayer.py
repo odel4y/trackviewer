@@ -26,9 +26,8 @@ class BufferedLayer(GObject.GObject, osmgpsmap.MapLayer):
         gpsmap.map_redraw() # Force redraw when map is resized
 
     def do_draw(self, gpsmap, cr):
-        if self.gpx_manager.has_track():
-            cr.set_source_surface(self.surface, self._drag_dx, self._drag_dy)
-            cr.paint()
+        cr.set_source_surface(self.surface, self._drag_dx, self._drag_dy)
+        cr.paint()
 
     def do_render(self, gpsmap):
         pass
@@ -55,20 +54,35 @@ class BufferedLayer(GObject.GObject, osmgpsmap.MapLayer):
             self._drag_dy = gdkeventmotion.y - self._drag_starty
 GObject.type_register(BufferedLayer)
 
-
 class TrackLayer(BufferedLayer):
-    def __init__(self, gpsmap, gpxm):
+    def __init__(self, gpsmap, gpxm, osmm):
         super(TrackLayer, self).__init__( gpsmap)
         self.gpx_manager = gpxm
+        self.osm_manager = osmm
 
     def do_render(self, gpsmap):
+        cr = cairo.Context(self.surface)
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.set_source_rgba (1, 1, 1, 0.00)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+        if self.osm_manager.has_data():
+            cr.set_source_rgba (0, 0, 1, 0.80)
+            for way in self.osm_manager.get_way_iter():
+                init = True
+                for node in self.osm_manager.get_node_iter(way):
+                    lon, lat = node["lon"], node["lat"]
+                    osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
+                    (next_x, next_y) = gpsmap.convert_geographic_to_screen(osm_p)
+                    if init:
+                        cr.move_to(next_x, next_y)
+                        init = False
+                    else:
+                        cr.line_to(next_x, next_y)
+                cr.stroke()
+                
         if self.gpx_manager.has_track():
-            cr = cairo.Context(self.surface)
-            cr.set_operator(cairo.OPERATOR_SOURCE)
-            cr.set_source_rgba (0, 0, 1, 0.00)
-            cr.paint()
-            cr.set_operator(cairo.OPERATOR_OVER)
-            cr.set_source_rgba (0, 0, 1, 1.00)
+            cr.set_source_rgba (1, 0, 0, 0.80)
             init = True
             for lon, lat in self.gpx_manager.get_track_window_iter():
                 osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
@@ -79,5 +93,6 @@ class TrackLayer(BufferedLayer):
                 else:
                     cr.line_to(next_x, next_y)
             cr.stroke()
+            
 GObject.type_register(TrackLayer)
 

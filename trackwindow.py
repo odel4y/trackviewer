@@ -15,6 +15,7 @@ Gdk.threads_init()
 
 from gi.repository import OsmGpsMap as osmgpsmap
 import gpxmanager
+import osmmanager
 import tracklayer
 
 class TrackApp(object):
@@ -37,6 +38,7 @@ class TrackApp(object):
         self.map_box = self.builder.get_object("map_box")
         
         self.gpx_manager = gpxmanager.GPXManager()
+        self.osm_manager = osmmanager.OSMManager()
         
         self.create_osm()
         
@@ -74,7 +76,7 @@ class TrackApp(object):
                     show_crosshair=True)
         )
         # Add the extra drawing layers
-        tl = tracklayer.TrackLayer(self.osm, self.gpx_manager)
+        tl = tracklayer.TrackLayer(self.osm, self.gpx_manager, self.osm_manager)
         self.osm.layer_add(tl)
         self.osm.set_size_request(400,400)
         self.map_box.pack_start(self.osm, True, True, 0)
@@ -139,11 +141,14 @@ class TrackApp(object):
     def on_osm_load_clicked(self, w):
         """On maximum zoom level -> download osm data and store it"""
         zoom = self.osm.get_property("zoom")
+        p1, p2 = self.osm.get_bbox()
+        lat1, lon1 = p1.get_degrees()
+        lat2, lon2 = p2.get_degrees()
+        print lon1, lat1
+        print lon2, lat2
         if (zoom >= 17):
-            p1, p2 = self.osm.get_bbox()
-            lat1, lon1 = p1.get_degrees()
-            lat2, lon2 = p2.get_degrees()
-            self.gpx_manager.download_osm_map(lon1, lat1, lon2, lat2)
+            self.osm_manager.download_osm_map(lon1, lat1, lon2, lat2)
+            self.osm.map_redraw()
         else:
             print "Zum Download der OSM-Daten bitte maximale Zoom-Stufe wählen"
 
