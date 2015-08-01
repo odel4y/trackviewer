@@ -4,7 +4,7 @@
 import sys
 import os.path
 import random
-from math import pi
+from math import sqrt
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
@@ -167,6 +167,14 @@ class TrackApp(object):
         track_t = self.adjustment_track_transparency.get_value()/100.0
         self.track_layer.set_layer_visibility(map_v, map_t, osm_v, osm_t, track_v, track_t)
         self.osm.map_redraw()
+        
+    def projected_distance(self, x1, y1, x2, y2, xp, yp):
+        """Calculate parallel distance of a point to a line (vector)"""
+        a = (y2-y1)/(x2-x1)
+        b = -1.0
+        c = y1 + (y1-y2)/(x2-x1)*x1
+        dist = abs(a*xp + b*yp + c)/sqrt(a**2+b**2)
+        return dist
 
 if __name__ == "__main__":
     TrackApp()

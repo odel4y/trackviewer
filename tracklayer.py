@@ -75,6 +75,7 @@ class TrackLayer(BufferedLayer):
             cr.set_operator(cairo.OPERATOR_OVER)
             if self.osm_manager.has_data() and self.osm_visible:
                 cr.set_source_rgba (0, 0, 1, self.osm_transparency)
+                cr.set_line_width(3.0)
                 for way in self.osm_manager.get_way_iter():
                     init = True
                     for node in self.osm_manager.get_node_iter(way):
@@ -90,6 +91,7 @@ class TrackLayer(BufferedLayer):
                     
             if self.gpx_manager.has_track() and self.track_visible:
                 cr.set_source_rgba (1, 0, 0, self.track_transparency)
+                cr.set_line_width(3.0)
                 init = True
                 for lon, lat in self.gpx_manager.get_track_window_iter():
                     osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
