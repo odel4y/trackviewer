@@ -29,7 +29,8 @@ class TrackApp(object):
             "onGSatButtonClicked": lambda b: self.toggle_mapsource(b,osmgpsmap.MapSource_t.GOOGLE_SATELLITE),
             "onOpenGPXClicked": self.on_open_gpx_clicked,
             "onTracklengthChanged": lambda w: self.set_track_moving_window(),
-            "onOSMLoadClicked": self.on_osm_load_clicked
+            "onOSMLoadClicked": self.on_osm_load_clicked,
+            "updateLayerVisibility": self.update_layer_visibility
         }
         self.builder = Gtk.Builder()
         self.builder.add_from_file("trackwindow.glade")
@@ -39,8 +40,6 @@ class TrackApp(object):
         
         self.gpx_manager = gpxmanager.GPXManager()
         self.osm_manager = osmmanager.OSMManager()
-        
-        self.create_osm()
         
         # Load icons for map buttons
         rb_osm = self.builder.get_object("radiobutton_osm")   
@@ -54,9 +53,15 @@ class TrackApp(object):
         self.checkbutton_tracklength = self.builder.get_object("checkbutton_tracklength")
         self.adjustment_width = self.builder.get_object("adjustment_width")
         self.adjustment_center = self.builder.get_object("adjustment_center")
-        #self.spinbutton_tracklength = self.builder.get_object("spinbutton_tracklength")
-        #self.scale_position = self.builder.get_object("scale_position")
+        self.adjustment_map_transparency = self.builder.get_object("adjustment_map_transparency")
+        self.adjustment_osm_transparency = self.builder.get_object("adjustment_osm_transparency")
+        self.adjustment_track_transparency = self.builder.get_object("adjustment_track_transparency")
+        self.checkbutton_map_visible = self.builder.get_object("checkbutton_map_visible")
+        self.checkbutton_osm_visible = self.builder.get_object("checkbutton_osm_visible")
+        self.checkbutton_track_visible = self.builder.get_object("checkbutton_track_visible")
         
+        self.create_osm()
+
         self.win.show_all()
         Gtk.main()
         
@@ -76,8 +81,9 @@ class TrackApp(object):
                     show_crosshair=True)
         )
         # Add the extra drawing layers
-        tl = tracklayer.TrackLayer(self.osm, self.gpx_manager, self.osm_manager)
-        self.osm.layer_add(tl)
+        self.track_layer = tracklayer.TrackLayer(self.osm, self.gpx_manager, self.osm_manager)
+        self.update_layer_visibility(None)
+        self.osm.layer_add(self.track_layer)
         self.osm.set_size_request(400,400)
         self.map_box.pack_start(self.osm, True, True, 0)
         self.osm.show()
@@ -151,6 +157,16 @@ class TrackApp(object):
             self.osm.map_redraw()
         else:
             print "Zum Download der OSM-Daten bitte maximale Zoom-Stufe wählen"
+
+    def update_layer_visibility(self, w):
+        map_v = self.checkbutton_map_visible.get_active()
+        osm_v = self.checkbutton_osm_visible.get_active()
+        track_v = self.checkbutton_track_visible.get_active()
+        map_t = self.adjustment_map_transparency.get_value()/100.0
+        osm_t = self.adjustment_osm_transparency.get_value()/100.0
+        track_t = self.adjustment_track_transparency.get_value()/100.0
+        self.track_layer.set_layer_visibility(map_v, map_t, osm_v, osm_t, track_v, track_t)
+        self.osm.map_redraw()
 
 if __name__ == "__main__":
     TrackApp()

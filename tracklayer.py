@@ -59,19 +59,39 @@ class TrackLayer(BufferedLayer):
         super(TrackLayer, self).__init__( gpsmap)
         self.gpx_manager = gpxm
         self.osm_manager = osmm
+        self.map_visible = True
+        self.osm_visible = True
+        self.track_visible = True
+        self.map_transparency = 1.0
+        self.osm_transparency = 1.0
+        self.track_transparency = 1.0
 
     def do_render(self, gpsmap):
-        cr = cairo.Context(self.surface)
-        cr.set_operator(cairo.OPERATOR_SOURCE)
-        cr.set_source_rgba (1, 1, 1, 0.00)
-        cr.paint()
-        cr.set_operator(cairo.OPERATOR_OVER)
-        if self.osm_manager.has_data():
-            cr.set_source_rgba (0, 0, 1, 0.80)
-            for way in self.osm_manager.get_way_iter():
+        if self.surface:
+            cr = cairo.Context(self.surface)
+            cr.set_operator(cairo.OPERATOR_SOURCE)
+            cr.set_source_rgba (1, 1, 1, 1.0 - self.map_transparency)
+            cr.paint()
+            cr.set_operator(cairo.OPERATOR_OVER)
+            if self.osm_manager.has_data() and self.osm_visible:
+                cr.set_source_rgba (0, 0, 1, self.osm_transparency)
+                for way in self.osm_manager.get_way_iter():
+                    init = True
+                    for node in self.osm_manager.get_node_iter(way):
+                        lon, lat = node["lon"], node["lat"]
+                        osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
+                        (next_x, next_y) = gpsmap.convert_geographic_to_screen(osm_p)
+                        if init:
+                            cr.move_to(next_x, next_y)
+                            init = False
+                        else:
+                            cr.line_to(next_x, next_y)
+                    cr.stroke()
+                    
+            if self.gpx_manager.has_track() and self.track_visible:
+                cr.set_source_rgba (1, 0, 0, self.track_transparency)
                 init = True
-                for node in self.osm_manager.get_node_iter(way):
-                    lon, lat = node["lon"], node["lat"]
+                for lon, lat in self.gpx_manager.get_track_window_iter():
                     osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
                     (next_x, next_y) = gpsmap.convert_geographic_to_screen(osm_p)
                     if init:
@@ -80,19 +100,14 @@ class TrackLayer(BufferedLayer):
                     else:
                         cr.line_to(next_x, next_y)
                 cr.stroke()
-                
-        if self.gpx_manager.has_track():
-            cr.set_source_rgba (1, 0, 0, 0.80)
-            init = True
-            for lon, lat in self.gpx_manager.get_track_window_iter():
-                osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
-                (next_x, next_y) = gpsmap.convert_geographic_to_screen(osm_p)
-                if init:
-                    cr.move_to(next_x, next_y)
-                    init = False
-                else:
-                    cr.line_to(next_x, next_y)
-            cr.stroke()
             
+    def set_layer_visibility(self, map_v, map_t, osm_v, osm_t, track_v, track_t):
+        """Set the visibility and transparency of the respective data layers"""
+        self.map_transparency = map_t
+        self.osm_transparency = osm_t
+        self.track_transparency = track_t
+        if not map_v: self.map_transparency = 0.0 # We cannot stop the map component from drawing but we can hide it
+        self.osm_visible = osm_v
+        self.track_visible = track_v
+        
 GObject.type_register(TrackLayer)
-
