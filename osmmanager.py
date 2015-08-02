@@ -2,10 +2,13 @@
 #coding:utf-8
 import overpass
 from collections import namedtuple
+from math import sqrt
 
 class OSMManager:
     def __init__(self):
         self._osm = None
+        self.selected_way = None
+        self.selected_node = None
     
     def has_data(self): return self._osm != None
     
@@ -25,8 +28,54 @@ class OSMManager:
             #print "yield",way
             yield way
             
-    def get_node_iter(self, way):
-        for n_id in way["nodes"]:
-            n_dic = [n for n in self._osm if n["id"]==n_id][0]
-            yield n_dic
+    def get_node_iter(self, way=None):
+        if way != None:
+            for n_id in way["nodes"]:
+                n_dic = [n for n in self._osm if n["id"]==n_id][0]
+                yield n_dic
+        else:
+            for el in self._osm:
+                if el["type"] == "node":
+                    yield el
             
+    def get_node(self, node_id):
+        for el in self._osm:
+            if el["id"] == node_id:
+                return el
+            
+    def projected_distance(self, x1, y1, x2, y2, xp, yp):
+        """Calculate parallel distance of a point to a line (vector)"""
+        a = (y2-y1)/(x2-x1)
+        b = -1.0
+        c = y1 + (y1-y2)/(x2-x1)*x1
+        dist = abs(a*xp + b*yp + c)/sqrt(a**2+b**2)
+        return dist
+        
+    def distance(self, x1, y1, xp, yp):
+        return sqrt((x1-xp)**2 + (y1-yp)**2)
+        
+    def get_closest_way_to_point(self, p_lon, p_lat):
+        """Return the way that has the least distance to the given point"""
+        min_way_dist = 100.0
+        min_node_dist = 100.0
+        min_way_id = 0
+        min_node_id = 0
+        for way in self.get_way_iter():
+            last_lon, last_lat = None, None
+            for node in self.get_node_iter(way):
+                lon, lat = node["lon"], node["lat"]
+                if last_lon != None and last_lat != None:
+                    way_dist = self.projected_distance(lon, lat, last_lon, last_lat, p_lon, p_lat)
+                    node_dist = self.distance(lon, lat, p_lon, p_lat)
+                    # point within bounding box of this line?
+                    lon_within = min(lon,last_lon) <= p_lon <= max(lon,last_lon)
+                    lat_within = min(lat,last_lat) <= p_lat <= max(lat,last_lat)
+                    if way_dist < min_way_dist and lon_within and lat_within:
+                        min_way_dist = way_dist
+                        min_way_id = way["id"]
+                    if node_dist < min_node_dist:
+                        min_node_dist = node_dist
+                        min_node_id = node["id"]
+                last_lon, last_lat = lon, lat
+        return min_way_id, min_node_id
+

@@ -4,7 +4,6 @@
 import sys
 import os.path
 import random
-from math import sqrt
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
@@ -17,6 +16,7 @@ from gi.repository import OsmGpsMap as osmgpsmap
 import gpxmanager
 import osmmanager
 import tracklayer
+import situation
 
 class TrackApp(object):
     def __init__(self):
@@ -30,7 +30,8 @@ class TrackApp(object):
             "onOpenGPXClicked": self.on_open_gpx_clicked,
             "onTracklengthChanged": lambda w: self.set_track_moving_window(),
             "onOSMLoadClicked": self.on_osm_load_clicked,
-            "updateLayerVisibility": self.update_layer_visibility
+            "updateLayerVisibility": self.update_layer_visibility,
+            "onIntersecClicked": self.on_intersec_button_clicked
         }
         self.builder = Gtk.Builder()
         self.builder.add_from_file("trackwindow.glade")
@@ -59,8 +60,13 @@ class TrackApp(object):
         self.checkbutton_map_visible = self.builder.get_object("checkbutton_map_visible")
         self.checkbutton_osm_visible = self.builder.get_object("checkbutton_osm_visible")
         self.checkbutton_track_visible = self.builder.get_object("checkbutton_track_visible")
+        self.label_intersection_sel = self.builder.get_object("label_intersection_sel")
+        self.button_def_intersection = self.builder.get_object("button_def_intersection")
         
         self.create_osm()
+
+        self.intersection_situation = None
+        self.intersection_sel_step = 0
 
         self.win.show_all()
         Gtk.main()
@@ -83,6 +89,7 @@ class TrackApp(object):
         # Add the extra drawing layers
         self.track_layer = tracklayer.TrackLayer(self.osm, self.gpx_manager, self.osm_manager)
         self.update_layer_visibility(None)
+        self.track_layer.set_clicked_handler(self.handle_track_clicks)
         self.osm.layer_add(self.track_layer)
         self.osm.set_size_request(400,400)
         self.map_box.pack_start(self.osm, True, True, 0)
@@ -167,14 +174,55 @@ class TrackApp(object):
         track_t = self.adjustment_track_transparency.get_value()/100.0
         self.track_layer.set_layer_visibility(map_v, map_t, osm_v, osm_t, track_v, track_t)
         self.osm.map_redraw()
-        
-    def projected_distance(self, x1, y1, x2, y2, xp, yp):
-        """Calculate parallel distance of a point to a line (vector)"""
-        a = (y2-y1)/(x2-x1)
-        b = -1.0
-        c = y1 + (y1-y2)/(x2-x1)*x1
-        dist = abs(a*xp + b*yp + c)/sqrt(a**2+b**2)
-        return dist
 
+    def update_intersection_label(self):
+        label_text = "<b>Kreuzungsdefinition:</b>\n1. Eingangsstraße: %s\n2. Ausgangsstraße: %s\n3. Kreuzungsmittelpunkt: %s"
+        entry_way = str(self.intersection_situation.entry_way)
+        exit_way = str(self.intersection_situation.exit_way)
+        intersection_node = str(self.intersection_situation.intersection_node)
+        self.label_intersection_sel.set_markup(label_text % (entry_way, exit_way, intersection_node))
+
+    def on_intersec_button_clicked(self, w):
+        """Everytime the button is clicked the intersection selection process proceeds to the next step"""
+        if self.intersection_sel_step == 0 and self.gpx_manager.has_track() and self.osm_manager.has_data():
+            self.intersection_situation = situation.IntersectionSituation()
+            self.button_def_intersection.set_label("Weiter >>>")
+            self.intersection_sel_step = 1
+        elif self.intersection_sel_step == 1 and self.intersection_situation.entry_way != None:
+            self.osm_manager.selected_way = None
+            self.osm_manager.selected_node = None
+            self.intersection_sel_step = 2
+        elif self.intersection_sel_step == 2 and self.intersection_situation.exit_way != None:
+            self.osm_manager.selected_way = None
+            self.osm_manager.selected_node = None
+            self.intersection_sel_step = 3
+        elif self.intersection_sel_step == 3 and self.intersection_situation.intersection_node != None:
+            self.osm_manager.selected_way = None
+            self.osm_manager.selected_node = None
+            self.button_def_intersection.set_label("Kreuzung definieren")
+            self.intersection_sel_step = 0
+        self.update_intersection_label()
+        self.osm.map_redraw()
+
+    def handle_track_clicks(self, cx, cy):
+        if self.intersection_sel_step > 0 and self.intersection_situation != None:
+            osm_p = self.osm.convert_screen_to_geographic(cx, cy)
+            lat, lon = osm_p.get_degrees()
+            way_id, node_id = self.osm_manager.get_closest_way_to_point(lon, lat)
+            self.osm_manager.selected_node = node_id
+            if self.intersection_sel_step == 1:
+                self.intersection_situation.entry_way = way_id
+                self.intersection_situation.entry_way_node = node_id
+                self.osm_manager.selected_way = way_id
+            elif self.intersection_sel_step == 2:
+                self.intersection_situation.exit_way = way_id
+                self.intersection_situation.exit_way_node = node_id
+                self.osm_manager.selected_way = way_id
+            elif self.intersection_sel_step == 3:
+                self.intersection_situation.intersection_node = node_id
+            
+            self.update_intersection_label()
+            self.osm.map_redraw()
+        
 if __name__ == "__main__":
     TrackApp()

@@ -15,6 +15,7 @@ class BufferedLayer(GObject.GObject, osmgpsmap.MapLayer):
         self._dragging = False
         self._drag_startx = self._drag_starty = 0
         self._drag_dx = self._drag_dy = 0
+        self._clicked_handler = None
         gpsmap.connect("size-allocate", self.do_resize)
         gpsmap.connect("button-release-event", self.do_button_release)
         gpsmap.connect("motion-notify-event", self.do_motion_notify)
@@ -45,6 +46,9 @@ class BufferedLayer(GObject.GObject, osmgpsmap.MapLayer):
     def do_button_release(self, gpsmap, gdkeventbutton):
         if gdkeventbutton.button == 1:
             self._dragging = False
+            if self._clicked_handler and abs(self._drag_dx)<2.0 and abs(self._drag_dy)<2.0:
+                #Detecting a click on the map (maybe some track clicked)
+                self._clicked_handler(gdkeventbutton.x, gdkeventbutton.y)
             self._drag_dx = self._drag_dy = 0
         return False
         
@@ -52,6 +56,10 @@ class BufferedLayer(GObject.GObject, osmgpsmap.MapLayer):
         if self._dragging:
             self._drag_dx = gdkeventmotion.x - self._drag_startx
             self._drag_dy = gdkeventmotion.y - self._drag_starty
+
+    def set_clicked_handler(self, fun):
+        self._clicked_handler = fun
+        
 GObject.type_register(BufferedLayer)
 
 class TrackLayer(BufferedLayer):
@@ -70,6 +78,7 @@ class TrackLayer(BufferedLayer):
         if self.surface:
             cr = cairo.Context(self.surface)
             cr.set_operator(cairo.OPERATOR_SOURCE)
+            cr.set_line_cap(cairo.LINE_CAP_ROUND)
             cr.set_source_rgba (1, 1, 1, 1.0 - self.map_transparency)
             cr.paint()
             cr.set_operator(cairo.OPERATOR_OVER)
@@ -77,6 +86,10 @@ class TrackLayer(BufferedLayer):
                 cr.set_source_rgba (0, 0, 1, self.osm_transparency)
                 cr.set_line_width(3.0)
                 for way in self.osm_manager.get_way_iter():
+                    if way["id"] == self.osm_manager.selected_way:
+                        cr.set_source_rgba (1, 0.5, 0, self.osm_transparency)
+                    else:
+                        cr.set_source_rgba (0, 0, 1, self.osm_transparency)
                     init = True
                     for node in self.osm_manager.get_node_iter(way):
                         lon, lat = node["lon"], node["lat"]
@@ -87,6 +100,16 @@ class TrackLayer(BufferedLayer):
                             init = False
                         else:
                             cr.line_to(next_x, next_y)
+                    cr.stroke()
+                if self.osm_manager.selected_node != None:
+                    cr.set_source_rgba (1, 0, 1, self.osm_transparency)
+                    cr.set_line_width(12.0)
+                    node = self.osm_manager.get_node(self.osm_manager.selected_node)
+                    lon, lat = node["lon"], node["lat"]
+                    osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
+                    (next_x, next_y) = gpsmap.convert_geographic_to_screen(osm_p)
+                    cr.move_to(next_x, next_y)
+                    cr.line_to(next_x, next_y)
                     cr.stroke()
                     
             if self.gpx_manager.has_track() and self.track_visible:
