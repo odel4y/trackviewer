@@ -116,7 +116,7 @@ class TrackLayer(BufferedLayer):
                 cr.set_source_rgba (1, 0, 0, self.track_transparency)
                 cr.set_line_width(3.0)
                 init = True
-                for lon, lat in self.gpx_manager.get_track_window_iter():
+                for lon, lat, _ in self.gpx_manager.get_track_window_iter():
                     osm_p = osmgpsmap.MapPoint.new_degrees(lat, lon)
                     (next_x, next_y) = gpsmap.convert_geographic_to_screen(osm_p)
                     if init:

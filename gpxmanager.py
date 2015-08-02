@@ -43,7 +43,7 @@ class GPXManager:
                 for segment in track.segments:
                     for i, point in enumerate(segment.points):
                         if start_p <= i < end_p:
-                            yield (point.longitude, point.latitude)
+                            yield (point.longitude, point.latitude, point.time)
 
     def get_track_window_iter(self):
         return self.get_track_iter(self._w_width, self._w_center)

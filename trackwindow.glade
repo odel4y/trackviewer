@@ -515,17 +515,32 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="button_def_intersection">
+                  <object class="GtkButton" id="button_intersection_def">
                     <property name="label" translatable="yes">Kreuzung definieren</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <signal name="clicked" handler="onIntersecClicked" swapped="no"/>
+                    <signal name="clicked" handler="onIntersecDef" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
                     <property name="position">7</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="button_intersection_next">
+                    <property name="label" translatable="yes">Weiter &gt;&gt;&gt;</property>
+                    <property name="visible">True</property>
+                    <property name="sensitive">False</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <signal name="clicked" handler="onIntersecNext" swapped="no"/>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">8</property>
                   </packing>
                 </child>
               </object>
