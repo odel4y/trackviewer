@@ -19,6 +19,16 @@ import osmmanager
 import tracklayer
 import situation
 import pickle
+import copy
+
+_intersection_situation = {
+    "entry_way": None,          # way id
+    "entry_way_node": None,     # node id
+    "exit_way": None,           # way id
+    "exit_way_node": None,      # node id
+    "intersection_node": None,  # node id
+    "track": None               # list of (lon, lat, time) values
+}
 
 class TrackApp(object):
     def __init__(self):
@@ -69,7 +79,7 @@ class TrackApp(object):
         self.create_osm()
 
         self.intersection_situation = None
-        self.intersection_sel_step = 0
+        self.int_sel_step = 0
 
         self.win.show_all()
         Gtk.main()
@@ -180,35 +190,35 @@ class TrackApp(object):
 
     def update_intersection_label(self):
         label_text = "<b>Kreuzungsdefinition:</b>\n1. Eingangsstraße: %s\n2. Ausgangsstraße: %s\n3. Kreuzungsmittelpunkt: %s"
-        entry_way = str(self.intersection_situation.entry_way)
-        exit_way = str(self.intersection_situation.exit_way)
-        intersection_node = str(self.intersection_situation.intersection_node)
+        entry_way = str(self.int_sit["entry_way"])
+        exit_way = str(self.int_sit["exit_way"])
+        intersection_node = str(self.int_sit["intersection_node"])
         self.label_intersection_sel.set_markup(label_text % (entry_way, exit_way, intersection_node))
 
     def on_intersec_button_next(self, w):
         """Everytime the button is clicked the intersection selection process proceeds to the next step"""
         if self.gpx_manager.has_track() and self.osm_manager.has_data():
-            self.progress_intersection_definition(self.intersection_sel_step)
-            self.intersection_sel_step = (self.intersection_sel_step + 1) % 4
+            self.progress_intersection_definition(self.int_sel_step)
+            self.int_sel_step = (self.int_sel_step + 1) % 4
 
     def on_intersec_button_define(self, w):
         if self.gpx_manager.has_track() and self.osm_manager.has_data():
             self.progress_intersection_definition(0)
-            self.intersection_sel_step = 1
+            self.int_sel_step = 1 # intersection selection step
 
     def progress_intersection_definition(self, step):
         if step == 0:
             self.osm_manager.selected_way = None
             self.osm_manager.selected_node = None
-            self.intersection_situation = situation.IntersectionSituation()
+            self.int_sit = copy.deepcopy(_intersection_situation)
             self.button_intersection_next.set_sensitive(True)
-        elif step == 1 and self.intersection_situation.entry_way != None:
+        elif step == 1 and self.int_sit["entry_way"] != None:
             self.osm_manager.selected_way = None
             self.osm_manager.selected_node = None
-        elif step == 2 and self.intersection_situation.exit_way != None:
+        elif step == 2 and self.int_sit["exit_way"] != None:
             self.osm_manager.selected_way = None
             self.osm_manager.selected_node = None
-        elif step == 3 and self.intersection_situation.intersection_node != None:
+        elif step == 3 and self.int_sit["intersection_node"] != None:
             self.save_intersection_situation()
             self.osm_manager.selected_way = None
             self.osm_manager.selected_node = None
@@ -218,31 +228,30 @@ class TrackApp(object):
 
     def handle_track_clicks(self, cx, cy):
         """Handle the clicked registered by tracklayer in connection with an intersection situation"""
-        if self.intersection_sel_step > 0 and self.intersection_situation != None:
+        if self.int_sel_step > 0 and self.int_sit != None:
             osm_p = self.osm.convert_screen_to_geographic(cx, cy)
             lat, lon = osm_p.get_degrees()
             way_id, node_id = self.osm_manager.get_closest_way_to_point(lon, lat)
             self.osm_manager.selected_node = node_id
-            if self.intersection_sel_step == 1:
-                self.intersection_situation.entry_way = way_id
-                self.intersection_situation.entry_way_node = node_id
+            if self.int_sel_step == 1:
+                self.int_sit["entry_way"] = way_id
+                self.int_sit["entry_way_node"] = node_id
                 self.osm_manager.selected_way = way_id
-            elif self.intersection_sel_step == 2:
-                self.intersection_situation.exit_way = way_id
-                self.intersection_situation.exit_way_node = node_id
+            elif self.int_sel_step == 2:
+                self.int_sit["exit_way"] = way_id
+                self.int_sit["exit_way_node"] = node_id
                 self.osm_manager.selected_way = way_id
-            elif self.intersection_sel_step == 3:
-                self.intersection_situation.intersection_node = node_id
+            elif self.int_sel_step == 3:
+                self.int_sit["intersection_node"] = node_id
             self.update_intersection_label()
             self.osm.map_redraw()
 
     def save_intersection_situation(self):
         """Save the situation with a filename containing the gpx track name and a counter for each situation"""
-        i_s = self.intersection_situation
-        i_s.track = list(self.gpx_manager.get_track_window_iter())
-        is_complete = i_s.entry_way != None and i_s.entry_way_node != None and\
-            i_s.exit_way != None and i_s.exit_way_node != None and \
-            i_s.intersection_node != None
+        self.int_sit["track"] = list(self.gpx_manager.get_track_window_iter())
+        is_complete = self.int_sit["entry_way"] != None and self.int_sit["entry_way_node"] != None and\
+            self.int_sit["exit_way"] != None and self.int_sit["exit_way_node"] != None and \
+            self.int_sit["intersection_node"] != None
         if is_complete:
             (_,gpx_fn) = os.path.split(self.gpx_manager.gpx_filename)
             gpx_fn = gpx_fn[:-4] # strip the .gpx extension
@@ -256,7 +265,7 @@ class TrackApp(object):
                 counter = 0
             fn = os.path.join(prep_data_dir, gpx_fn + '_' + str(counter) + '.pickle')
             with open(fn, 'w') as f:
-                pickle.dump(self.intersection_situation, f)
+                pickle.dump(self.int_sit, f)
                 print 'Saved', os.path.split(fn)[1]
 
 if __name__ == "__main__":
