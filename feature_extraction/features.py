@@ -4,6 +4,7 @@ import sys
 import os.path
 import pickle
 import overpass
+import pyproj
 
 # Features
 # - Straßenwinkel zueinander
@@ -28,6 +29,15 @@ def get_osm_data(int_sit):
     result = api.Get(search_str)
     return result["elements"]
 
+def transform_to_cartesian(osm):
+    in_proj = pyproj.Proj(init='epsg:4326')    # Längen-/Breitengrad
+    out_proj = pyproj.Proj(init='epsg:3857')   # Kartesische Koordinaten
+    for el in osm:
+        if "lon" in el:
+            x1,y1 = el["lon"], el["lat"]
+            x2,y2 = pyproj.transform(in_proj,out_proj,x1,y1)
+            el["lon"], el["lat"] = x2, y2
+    
 def get_street_angle():
     pass
 
