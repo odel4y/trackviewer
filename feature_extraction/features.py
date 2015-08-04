@@ -99,7 +99,7 @@ def get_intersection_angle(entry_line, exit_line):
     normal = np.cross(entry_v, exit_v) # The sign of the angle can be determined
     return np.arccos(np.dot(entry_v, exit_v)/(np.linalg.norm(entry_v) * np.linalg.norm(exit_v))) * normal
 
-def get_maxspeed(osm, way):
+def get_maxspeed(way):
     """Get the tagged maxspeed for a way. If no maxspeed is
     tagged try to guess it from the highway tag or adjacent ways"""
     if "maxspeed" in way["tags"]:
@@ -117,6 +117,13 @@ def get_maxspeed(osm, way):
             print 'No maxspeed could be found for %s (ID: %d)' % (way["tags"]["name"], way["id"])
             return None
 
+def get_oneway(way):
+    """Determine whether way is a oneway street"""
+    if "oneway" in way["tags"]:
+        return way["tags"]["oneway"] == "yes"
+    else
+        return False
+
 if __name__ == "__main__":
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
@@ -125,10 +132,13 @@ if __name__ == "__main__":
         with open(fn, 'r') as f:
             int_sit = pickle.load(f)
         osm = transform_to_cartesian(get_osm_data(int_sit))
+        entry_way, exit_way = int_sit["entry_way"], int_sit["exit_way"]
         entry_line, exit_line = get_way_line_strings(int_sit, osm)
         features = copy.deepcopy(_features)
         features["intersection_angle"] = get_intersection_angle(entry_line, exit_line)
-        features["maxspeed_entry"] = get_maxspeed(osm, get_element_by_id(osm, int_sit["entry_way"]))
-        features["maxspeed_exit"] = get_maxspeed(osm, get_element_by_id(osm, int_sit["exit_way"]))
+        features["maxspeed_entry"] = get_maxspeed(entry_way)
+        features["maxspeed_exit"] = get_maxspeed(exit_way)
+        features["oneway_entry"] = get_oneway(entry_way)
+        features["oneway_exit"] = get_oneway(exit_way)
         
         
