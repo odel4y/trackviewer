@@ -17,7 +17,6 @@ from gi.repository import OsmGpsMap as osmgpsmap
 import gpxmanager
 import osmmanager
 import tracklayer
-import situation
 import pickle
 import copy
 

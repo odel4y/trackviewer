@@ -5,7 +5,9 @@ import os.path
 import pickle
 import overpass
 import pyproj
-import shapely
+from shapely.geometry import LineString
+import numpy as np
+from math import pi
 
 # Features
 # - Straßenwinkel zueinander
@@ -57,38 +59,44 @@ def get_line_string_from_node_ids(osm, nodes):
     for node_id in nodes:
         this_node = get_element_by_id(osm, node_id)
         coords.append((this_node["x"], this_node["y"]))
-    return shapely.LineString(coords)
+    return LineString(coords)
+
+def get_node_ids_from_way(osm, way, start_node_id=None, end_node_id=None, undershoot=False, overshoot=False):
+    """Get a list of node ids from a way starting at start_node_id or the start of 
+    the way (undershoot==True) and ending at end_node_id included or until the end of the way (overshoot==True)"""
+    way_node_ids = way["nodes"]
+    if start_node_id != None and end_node_id != None:
+        start_ind = way_node_ids.index(start_node_id)
+        end_ind = way_node_ids.index(end_node_id)
+        if start_ind < end_ind:
+            if undershoot: start_ind = 0
+            if overshoot: end_ind = len(way_node_ids)-1
+            return way_node_ids[start_ind:end_ind+1]
+        if start_ind > end_ind:
+            if undershoot: start_ind = len(way_node_ids)-1
+            if overshoot: end_ind = 0
+            return reversed(way_node_ids[end_ind:start_ind+1])
+    else:
+        return way_node_ids
     
 def get_way_line_strings(int_sit, osm):
     """Return LineStrings for the actual entry and exit way separated by the intersection node.
-    The entry way faces towards the intersection and the exit way faces away from the intersection."""
+    The resulting entry way faces towards the intersection and the exit way faces away from the intersection."""
     entry_way = get_element_by_id(osm, int_sit["entry_way"])
-    entry_way_node_ids = entry_way["nodes"]
-    if int_sit["entry_way"] == int_sit["exit_way"]: # One way for entry and exit -> split at intersection node
-        cut_index = entry_way_node_ids.index(int_sit["intersection_node"])
-        if entry_way_node_ids.index(int_sit["entry_way"]) < cut_index:
-            entry_way_line_string = get_line_string_from_node_ids(osm, entry_way_node_ids[:cut_index+1])
-            exit_way_line_string = get_line_string_from_node_ids(osm, entry_way_node_ids[cut_index:])
-        else:
-            entry_way_line_string = get_line_string_from_node_ids(osm, reversed(entry_way_node_ids[cut_index:]))
-            exit_way_line_string = get_line_string_from_node_ids(osm, reversed(entry_way_node_ids[:cut_index+1]))
-    else:
-        exit_way = get_element_by_id(osm, int_sit["exit_way"])
-        entry_way_node_ids = entry_way["nodes"]
-        exit_way_node_ids = exit_way["nodes"]
-        if int_sit["intersection_node"] == entry_way_node_ids[0]:
-            entry_way_line_string = get_line_string_from_node_ids(osm, reversed(entry_way_node_ids))
-        else:
-            entry_way_line_string = get_line_string_from_node_ids(osm, entry_way_node_ids)
-        if int_sit["intersection_node"] == exit_way_node_ids[0]:
-            exit_way_line_string = get_line_string_from_node_ids(osm, exit_way_node_ids)
-        else:
-            exit_way_line_string = get_line_string_from_node_ids(osm, reversed(exit_way_node_ids))
+    exit_way = get_element_by_id(osm, int_sit["exit_way"])
+    entry_way_node_ids = get_node_ids_from_way(osm, entry_way, int_sit["entry_way_node"], int_sit["intersection_node"], True, False)
+    exit_way_node_ids = get_node_ids_from_way(osm, exit_way, int_sit["intersection_node"], int_sit["exit_way_node"], False, True)
+    entry_way_line_string = get_line_string_from_node_ids(osm, entry_way_node_ids)
+    exit_way_line_string = get_line_string_from_node_ids(osm, exit_way_node_ids)
     return (entry_way_line_string, exit_way_line_string)
         
-        
-def get_street_angle():
-    pass
+def get_intersection_angle(entry_line, exit_line):
+    """Returns the angle between entry and exit way in radians with parallel ways being a zero angle.
+    Only the segments touching the intersection are considered"""
+    entry_v = np.array(entry_line.coords[-1]) - np.array(entry_line.coords[-2])
+    exit_v = np.array(exit_line.coords[1]) - np.array(exit_line.coords[0])
+    normal = np.cross(entry_v, exit_v) # The sign of the angle can be determined
+    return np.arccos(np.dot(entry_v, exit_v)/(np.linalg.norm(entry_v) * np.linalg.norm(exit_v))) * normal
 
 if __name__ == "__main__":
     for fn in sys.argv[1:]:
@@ -98,5 +106,7 @@ if __name__ == "__main__":
         with open(fn, 'r') as f:
             int_sit = pickle.load(f)
         osm = transform_to_cartesian(get_osm_data(int_sit))
+        entry_line, exit_line = get_way_line_strings(int_sit, osm)
+        angle = get_intersection_angle(entry_line, exit_line)
         
         
