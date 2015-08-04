@@ -25,6 +25,10 @@ _features = {
     "oneway_exit": None
 }
 
+_label = {
+    "track_points": None
+}
+
 def get_osm_data(int_sit):
     api = overpass.API()
     search_str = '(way(%d);way(%d););(._;>>;);out;' % \
@@ -32,16 +36,25 @@ def get_osm_data(int_sit):
     result = api.Get(search_str)
     return result["elements"]
 
-def transform_to_cartesian(osm):
-    """Transform the OSM longitude/latitude values to a cartesian system"""
+def transform_osm_to_cartesian(osm):
+    for el in osm:
+        if el["type"] == "node":
+            el["x"], el["y"] = transform_to_cartesian(el["lon"], el["lat"])
+    return osm
+    
+def transform_track_to_cartesian(track):
+    new_track = []
+    for lon, lat, time in track:
+        x, y = transform_to_cartesian(lon, lat)
+        new_track.append((x, y, time))
+    return new_track
+
+def transform_to_cartesian(lon, lat):
+    """Transform longitude/latitude values to a cartesian system"""
     in_proj = pyproj.Proj(init='epsg:4326')    # Längen-/Breitengrad
     out_proj = pyproj.Proj(init='epsg:3857')   # Kartesische Koordinaten
-    for el in osm:
-        if "lon" in el:
-            x1,y1 = el["lon"], el["lat"]
-            x2,y2 = pyproj.transform(in_proj,out_proj,x1,y1)
-            el["x"], el["y"] = x2, y2
-    return osm
+    x,y = pyproj.transform(in_proj, out_proj, lon, lat)
+    return x,y
     
 def get_element_by_id(osm, el_id):
     """Returns the element with el_id from osm"""
@@ -121,18 +134,24 @@ def get_oneway(way):
     """Determine whether way is a oneway street"""
     if "oneway" in way["tags"]:
         return way["tags"]["oneway"] == "yes"
-    else
+    else:
         return False
+        
+#def get_track_line_string(int_sit):
+#    """Constructs a LineString from the Track"""
+#    for 
 
 if __name__ == "__main__":
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
         fp, fne = os.path.split(fn)
-        print 'Processing', fne
+        print 'Processing %s' % (fne)
         with open(fn, 'r') as f:
             int_sit = pickle.load(f)
-        osm = transform_to_cartesian(get_osm_data(int_sit))
-        entry_way, exit_way = int_sit["entry_way"], int_sit["exit_way"]
+        osm = transform_osm_to_cartesian(get_osm_data(int_sit))
+        int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
+        entry_way = get_element_by_id(osm, int_sit["entry_way"])
+        exit_way = get_element_by_id(osm, int_sit["exit_way"])
         entry_line, exit_line = get_way_line_strings(int_sit, osm)
         features = copy.deepcopy(_features)
         features["intersection_angle"] = get_intersection_angle(entry_line, exit_line)
