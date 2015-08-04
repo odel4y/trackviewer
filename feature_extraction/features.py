@@ -41,6 +41,7 @@ def transform_to_cartesian(osm):
     return osm
     
 def get_line_string_from_node_ids(nodes):
+    """Construct a LineString from a list of Node IDs"""
     coords = []
     for node_id in nodes:
         osm_iter = iter(osm)
@@ -50,10 +51,22 @@ def get_line_string_from_node_ids(nodes):
         coords.append((this_node["x"], this_node["y"]))
     return shapely.LineString(coords)
     
-#def get_way_line_strings(int_sit, osm):
-#    """Return LineStrings for the actual entry and exit way separated by the intersection node facing away from the intersection"""
-#    if int_sit["entry_way"] == int_sit["exit_way"]: # One way for entry and exit -> split
-#        
+def get_way_line_strings(int_sit, osm):
+    """Return LineStrings for the actual entry and exit way separated by the intersection node both facing away from the intersection"""
+    if int_sit["entry_way"] == int_sit["exit_way"]: # One way for entry and exit -> split at intersection node
+        osm_iter = iter(osm)
+        this_way = osm_iter.next()
+        while this_way["id"] != int_sit["entry_way"]:
+            this_way = osm_iter.next()
+        node_ids = this_way["nodes"]
+        cut_index = node_ids.index(int_sit["intersection_node"])
+        if node_ids.index(int_sit["entry_way"]) < cut_index:
+            entry_way_line_string = get_line_string_from_node_ids(reversed(node_ids[:cut_index+1]))
+            exit_way_line_string = get_line_string_from_node_ids(node_ids[cut_index:])
+        else:
+            entry_way_line_string = get_line_string_from_node_ids(node[cut_index:])
+            exit_way_line_string = get_line_string_from_node_ids(reversed(node_ids[:cut_index+1]))
+        return (entry_way_line_string, exit_way_line_string)
     
 def get_street_angle():
     pass
