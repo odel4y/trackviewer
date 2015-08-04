@@ -7,7 +7,7 @@ import overpass
 import pyproj
 from shapely.geometry import LineString
 import numpy as np
-from math import pi
+import copy
 
 # Features
 # - Straßenwinkel zueinander
@@ -15,8 +15,8 @@ from math import pi
 # - Fahrstreifenwahl am Eingang/Ausgang
 #   + Angegeben durch Abstand der Fahrstreifenmitte von Mittellinie der Straße in Openstreetmap
 # - Ist Eingang oder Ausgang Einbahnstraße?
-features = {
-    "street_angle": None,
+_features = {
+    "intersection_angle": None,
     "maxspeed_entry": None,
     "maxspeed_exit": None,
     "lane_distance_entry": None,
@@ -33,6 +33,7 @@ def get_osm_data(int_sit):
     return result["elements"]
 
 def transform_to_cartesian(osm):
+    """Transform the OSM longitude/latitude values to a cartesian system"""
     in_proj = pyproj.Proj(init='epsg:4326')    # Längen-/Breitengrad
     out_proj = pyproj.Proj(init='epsg:3857')   # Kartesische Koordinaten
     for el in osm:
@@ -43,7 +44,7 @@ def transform_to_cartesian(osm):
     return osm
     
 def get_element_by_id(osm, el_id):
-    """Returns the """
+    """Returns the element with el_id from osm"""
     osm_iter = iter(osm)
     this_el = osm_iter.next()
     while this_el["id"] != el_id:
@@ -54,7 +55,7 @@ def get_element_by_id(osm, el_id):
     return this_el
     
 def get_line_string_from_node_ids(osm, nodes):
-    """Construct a LineString from a list of Node IDs"""
+    """Constructs a LineString from a list of Node IDs"""
     coords = []
     for node_id in nodes:
         this_node = get_element_by_id(osm, node_id)
@@ -98,6 +99,24 @@ def get_intersection_angle(entry_line, exit_line):
     normal = np.cross(entry_v, exit_v) # The sign of the angle can be determined
     return np.arccos(np.dot(entry_v, exit_v)/(np.linalg.norm(entry_v) * np.linalg.norm(exit_v))) * normal
 
+def get_maxspeed(osm, way):
+    """Get the tagged maxspeed for a way. If no maxspeed is
+    tagged try to guess it from the highway tag or adjacent ways"""
+    if "maxspeed" in way["tags"]:
+        return way["tags"]["maxspeed"]
+    else:
+        # If no tag maxspeed is found try to guess it
+        if way["tags"]["highway"] in ["primary", "secondary"]:
+            # It is a larger street so 50km/h as maxspeed is assumable
+            print 'Assuming maxspeed 50km/h for %s (ID: %d) (highway=%s)' % (way["tags"]["name"], way["id"], way["tags"]["highway"])
+            return 50.0
+        elif way["tags"]["highway"] in ["residential"]:
+            print 'Assuming maxspeed 30km/h for %s (ID: %d) (highway=%s)' % (way["tags"]["name"], way["id"], way["tags"]["highway"])
+            return 30.0
+        else:
+            print 'No maxspeed could be found for %s (ID: %d)' % (way["tags"]["name"], way["id"])
+            return None
+
 if __name__ == "__main__":
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
@@ -107,6 +126,9 @@ if __name__ == "__main__":
             int_sit = pickle.load(f)
         osm = transform_to_cartesian(get_osm_data(int_sit))
         entry_line, exit_line = get_way_line_strings(int_sit, osm)
-        angle = get_intersection_angle(entry_line, exit_line)
+        features = copy.deepcopy(_features)
+        features["intersection_angle"] = get_intersection_angle(entry_line, exit_line)
+        features["maxspeed_entry"] = get_maxspeed(osm, get_element_by_id(osm, int_sit["entry_way"]))
+        features["maxspeed_exit"] = get_maxspeed(osm, get_element_by_id(osm, int_sit["exit_way"]))
         
         
