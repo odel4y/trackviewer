@@ -6,6 +6,8 @@ import pickle
 import overpass
 import pyproj
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
+from shapely import affinity
+from math import copysign
 import numpy as np
 import copy
 import pdb
@@ -31,7 +33,8 @@ _label = {
     "track_points": None
 }
 
-INT_DIST = 30.0     # distance of the secant construction points from the intersection center [m]
+INT_DIST = 30.0   # distance of the secant construction points from the intersection center [m]
+ANGLE_RES = 180   # the angle resolution when sampling the track in polar coordinates with the curve secant centroid as origin
 
 def get_osm_data(int_sit):
     api = overpass.API()
@@ -227,6 +230,23 @@ def get_normal_to_line(line, dist, normalized=False):
     neg_normal_line = LineString([(pc.x, pc.y), (pc.x - normal[0], pc.y - normal[1])])
     return normal_line, neg_normal_line
 
+def sample_track(curve_secant, track_line, intersection_angle):
+    """Sample the track's distance to the centroid of the curve_secant at constant angle steps.
+    Returns polar coordinates"""
+    origin = curve_secant.interpolate(0.5, normalized=True)
+    half_curve_secant = LineString([origin,\
+                                    curve_secant.interpolate(0.0, normalized=True)])
+    extended_ruler = extend_line(half_curve_secant, 100.0, direction="forward")
+    track_points = []
+    angle_steps = np.linspace(0.0, np.pi, ANGLE_RES)
+    for angle in np.nditer(angle_steps):
+        # depending on whether it is a right or a left turn the ruler has to rotate in different directions
+        rotated_ruler = affinity.rotate(extended_ruler, copysign(angle,intersection_angle), origin=origin, use_radians=True)
+        r = find_closest_intersection(rotated_ruler, origin, track_line)
+        if r == None: raise Exception("Sampling the track failed")
+        track_points.append((float(angle), r))
+    return track_points
+
 def plot_intersection(entry_line, exit_line, track_line, curve_secant):
     def plot_line(color='b', *line):
         for l in line:
@@ -243,8 +263,14 @@ def plot_intersection(entry_line, exit_line, track_line, curve_secant):
     plot_line('g', neg_normal_en, neg_normal_ex)
     plot_line('r', track_line)
     plot_line('k', curve_secant)
+    plt.show(block=False)
+
+def plot_sampled_track(track_points):
+    fig = plt.figure()
+    plt.hold(True)
+    x, y = zip(*track_points)
+    plt.plot(x,y,'b.-')
     plt.show()
-    
 
 if __name__ == "__main__":
     for fn in sys.argv[1:]:
@@ -255,6 +281,7 @@ if __name__ == "__main__":
             int_sit = pickle.load(f)
         print 'Downloading OSM...'
         osm = transform_osm_to_cartesian(get_osm_data(int_sit))
+        print 'Done.'
         int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
         entry_way = get_element_by_id(osm, int_sit["entry_way"])
         exit_way = get_element_by_id(osm, int_sit["exit_way"])
@@ -269,8 +296,11 @@ if __name__ == "__main__":
         features["oneway_exit"] = get_oneway(exit_way)
         features["lane_distance_entry"] = get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line)
         features["lane_distance_exit"] = get_lane_distance(exit_line, INT_DIST, track_line)
+        label = copy.deepcopy(_label)
+        label["track_points"] = sample_track(curve_secant, track_line, features["intersection_angle"])
         import json
         text = json.dumps(features, sort_keys=True, indent=4)
         print text
         #plot_intersection(entry_line, exit_line, track_line, curve_secant)
+        #plot_sampled_track(label["track_points"])
         
