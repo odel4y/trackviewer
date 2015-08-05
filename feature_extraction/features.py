@@ -9,6 +9,7 @@ from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 import numpy as np
 import copy
 import pdb
+import matplotlib.pyplot as plt
 
 # Features
 # - Straßenwinkel zueinander
@@ -192,6 +193,8 @@ def find_closest_intersection(normal, normal_p, track_line):
     else: raise Exception("No valid intersection type")
 
 def get_lane_distance(way_line, p_dist, track_line, normalized=False):
+    """Get the distance of the track to the way projected along its normal at p_dist.
+    The distance is positive for the right hand and negative for the left hand from the center line."""
     # Construct the normal and its negative counterpart to the line at p_dist
     normal, neg_normal = get_normal_to_line(way_line, p_dist, normalized=normalized)
     normal_p = way_line.interpolate(p_dist, normalized=normalized)
@@ -224,6 +227,21 @@ def get_normal_to_line(line, dist, normalized=False):
     neg_normal_line = LineString([(pc.x, pc.y), (pc.x - normal[0], pc.y - normal[1])])
     return normal_line, neg_normal_line
 
+def plot_intersection(entry_line, exit_line, track_line, curve_secant):
+    def plot_line(line, color):
+        coords = list(line.coords)
+        x,y = zip(*coords)
+        plt.plot(x,y, color+'-')
+    fig = plt.figure()
+    plt.hold(True)
+    plt.axis('equal')
+    plot_line(entry_line, 'b')
+    plot_line(exit_line, 'b')
+    plot_line(track_line, 'r')
+    plot_line(curve_secant, 'k')
+    plt.show()
+    
+
 if __name__ == "__main__":
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
@@ -250,4 +268,5 @@ if __name__ == "__main__":
         import json
         text = json.dumps(features, sort_keys=True, indent=4)
         print text
+        #plot_intersection(entry_line, exit_line, track_line, curve_secant)
         
