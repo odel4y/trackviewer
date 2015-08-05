@@ -5,7 +5,7 @@ import os.path
 import pickle
 import overpass
 import pyproj
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 import numpy as np
 import copy
 import pdb
@@ -169,38 +169,60 @@ def get_curve_secant_line(entry_line, exit_line):
     #curve_secant_mid = curve_secant.interpolate(0.5, normalized=True)
     return curve_secant
 
-def get_lane_distance(way_line, track_line, curve_secant):
-    extended_curve_secant = extend_line(curve_secant, 0.1)
-    p1 = way_line.intersection(extended_curve_secant)
-    return track_line.distance(p1)
-
-#def get_normal_to_line(line, dist, normalized=False):
-#    NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
-#    if not normalized:
-#        dist = dist/line.length
-#    pc = line.interpolate(dist, normalized=True)
-#    p1 = line.interpolate(dist-NORMAL_DX, normalized=True)
-#    p2 = line.interpolate(dist+NORMAL_DX, normalized=True)
-#    if not LineString([p1,p2]).intersects(pc):
-#        print 'Warning: Normal to line might be inaccurate'
-#    v1 = np.array([p2.x - p1.x, p2.y - p1.y, 0.0])
-#    v2 = np.array([0.0, 0.0, 1.0])
-#    normal = np.cross(v1, v2)
-#    normal = tuple(normal/np.linalg.norm(normal))[0:2]
-#    normal_line = LineString([(pc.x, pc.y), (normal[0], normal[1])])
-#    return normal_line
+#def get_lane_distance(way_line, track_line, curve_secant):
+#    extended_curve_secant = extend_line(curve_secant, 0.1)
+#    p1 = way_line.intersection(extended_curve_secant)
+#    return track_line.distance(p1)
     
-#def get_distance_along_normal(line1, line2, at_dist, normalized=False):
-#    normal_line = get_normal_to_line(line1, at_dist, normalized=normalized)
-#    extended_normal_line = extend_line(normal_line, 100.0, direction="forward")
-#    p1 = line1.interpolate(at_dist, normalized=normalized)
-#    intersection = extended_normal_line.intersection(line2)
-#    
-#    if len(intersection) > 0:
-#        p2 = intersection[0]
-#        return p1.distance(p2)
-#    else:
-#        raise Exception("Could not calculate projected distance - Normal too short")
+#def get_lane_distance(w_point, track_line):
+#    return track_line.distance(w_point)
+
+def find_closest_intersection(normal, normal_p, track_line):
+    """Helper function to handle the different types of intersection"""
+    intsec = normal.intersection(track_line)
+    if type(intsec) == Point:
+        return normal_p.distance(intsec)
+    elif type(intsec) == MultiPoint:
+        distances = []
+        for p in intsec:
+            distances.append(normal_p.distance(p))
+        return min(distances)
+    elif type(intsec) == GeometryCollection and len(intsec) <= 0:
+        return None
+    else: raise Exception("No valid intersection type")
+
+def get_lane_distance(way_line, p_dist, track_line, normalized=False):
+    # Construct the normal and its negative counterpart to the line at p_dist
+    normal, neg_normal = get_normal_to_line(way_line, p_dist, normalized=normalized)
+    normal_p = way_line.interpolate(p_dist, normalized=normalized)
+    # Extend lines to be sure that they intersect with track line
+    normal = extend_line(normal, 100.0, direction="forward")
+    neg_normal = extend_line(neg_normal, 100.0, direction="forward")
+    dist_n = find_closest_intersection(normal, normal_p, track_line)
+    dist_nn = find_closest_intersection(neg_normal, normal_p, track_line)
+    if dist_n != None and dist_nn != None:
+        if dist_n <= dist_nn:
+            return -dist_n
+        else:
+            return dist_nn
+    return dist_nn or -dist_n # Return the one that is not None
+
+def get_normal_to_line(line, dist, normalized=False):
+    NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
+    if not normalized:
+        dist = dist/line.length
+    pc = line.interpolate(dist, normalized=True)
+    p1 = line.interpolate(dist-NORMAL_DX, normalized=True)
+    p2 = line.interpolate(dist+NORMAL_DX, normalized=True)
+    if not LineString([p1,p2]).intersects(pc):
+        print 'Warning: Normal to line might be inaccurate'
+    v1 = np.array([p2.x - p1.x, p2.y - p1.y, 0.0])
+    v2 = np.array([0.0, 0.0, 1.0])
+    normal = np.cross(v1, v2)
+    normal = tuple(normal/np.linalg.norm(normal))[0:2]
+    normal_line = LineString([(pc.x, pc.y), (pc.x + normal[0], pc.y + normal[1])])
+    neg_normal_line = LineString([(pc.x, pc.y), (pc.x - normal[0], pc.y - normal[1])])
+    return normal_line, neg_normal_line
 
 if __name__ == "__main__":
     for fn in sys.argv[1:]:
@@ -209,6 +231,7 @@ if __name__ == "__main__":
         print 'Processing %s' % (fne)
         with open(fn, 'r') as f:
             int_sit = pickle.load(f)
+        print 'Downloading OSM...'
         osm = transform_osm_to_cartesian(get_osm_data(int_sit))
         int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
         entry_way = get_element_by_id(osm, int_sit["entry_way"])
@@ -222,8 +245,8 @@ if __name__ == "__main__":
         features["maxspeed_exit"] = get_maxspeed(exit_way)
         features["oneway_entry"] = get_oneway(entry_way)
         features["oneway_exit"] = get_oneway(exit_way)
-        features["lane_distance_entry"] = get_lane_distance(entry_line, track_line, curve_secant)
-        features["lane_distance_exit"] = get_lane_distance(exit_line, track_line, curve_secant)
+        features["lane_distance_entry"] = get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line)
+        features["lane_distance_exit"] = get_lane_distance(exit_line, INT_DIST, track_line)
         import json
         text = json.dumps(features, sort_keys=True, indent=4)
         print text
