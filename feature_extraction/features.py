@@ -150,11 +150,11 @@ def get_track_line(track):
 def extend_line(line, dist, direction="both"):
     """Extends a LineString on both ends for length dist"""
     start_c, end_c = [], []
-    if direction in ["both", "forward"]:
+    if direction in ["both", "backward"]:
         # coordinate of extending line segment at start
         start_slope = np.array(line.coords[0]) - np.array(line.coords[1])
         start_c = [tuple(start_slope * dist + np.array(line.coords[0]))]
-    elif direction in ["both", "backward"]:
+    elif direction in ["both", "forward"]:
         # coordinate of extending line segment at end
         end_slope = np.array(line.coords[-1]) - np.array(line.coords[-2])
         end_c = [tuple(end_slope * dist + np.array(line.coords[-1]))]
@@ -205,10 +205,10 @@ def get_lane_distance(way_line, p_dist, track_line, normalized=False):
     dist_nn = find_closest_intersection(neg_normal, normal_p, track_line)
     if dist_n != None and dist_nn != None:
         if dist_n <= dist_nn:
-            return -dist_n
+            return dist_n
         else:
-            return dist_nn
-    return dist_nn or -dist_n # Return the one that is not None
+            return -dist_nn
+    return dist_n or -dist_nn # Return the one that is not None
 
 def get_normal_to_line(line, dist, normalized=False):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
@@ -228,17 +228,21 @@ def get_normal_to_line(line, dist, normalized=False):
     return normal_line, neg_normal_line
 
 def plot_intersection(entry_line, exit_line, track_line, curve_secant):
-    def plot_line(line, color):
-        coords = list(line.coords)
-        x,y = zip(*coords)
-        plt.plot(x,y, color+'-')
+    def plot_line(color='b', *line):
+        for l in line:
+            coords = list(l.coords)
+            x,y = zip(*coords)
+            plt.plot(x,y, color+'-')
+    normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False)
+    normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False)
     fig = plt.figure()
     plt.hold(True)
     plt.axis('equal')
-    plot_line(entry_line, 'b')
-    plot_line(exit_line, 'b')
-    plot_line(track_line, 'r')
-    plot_line(curve_secant, 'k')
+    plot_line('b', entry_line, exit_line)
+    plot_line('m', normal_en, normal_ex)
+    plot_line('g', neg_normal_en, neg_normal_ex)
+    plot_line('r', track_line)
+    plot_line('k', curve_secant)
     plt.show()
     
 
