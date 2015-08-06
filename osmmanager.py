@@ -72,8 +72,9 @@ class OSMManager:
                     way_dist = self.projected_distance(lon, lat, last_lon, last_lat, p_lon, p_lat)
                     node_dist = self.distance(lon, lat, p_lon, p_lat)
                     # point within bounding box of this line?
-                    lon_within = min(lon,last_lon) <= p_lon <= max(lon,last_lon)
-                    lat_within = min(lat,last_lat) <= p_lat <= max(lat,last_lat)
+                    extra_border = 0.0001
+                    lon_within = min(lon,last_lon) - extra_border <= p_lon <= max(lon,last_lon) + extra_border
+                    lat_within = min(lat,last_lat) - extra_border <= p_lat <= max(lat,last_lat) + extra_border
                     if way_dist < min_way_dist and lon_within and lat_within:
                         min_way_dist = way_dist
                         min_way_id = way["id"]
