@@ -166,9 +166,25 @@ def extend_line(line, dist, direction="both"):
         raise ValueError("Illegal argument for direction in extend_line")
     return LineString(start_c + list(line.coords) + end_c)
 
+def extended_interpolate(line, dist, normalized=False):
+    """Acts like the normal interpolate method except when the distance exceeds
+    the object's length. Then it first extends the line and then interpolates"""
+    if normalized:
+        dist = dist*line.length
+    if dist > line.length:
+        exceeding_dist = dist - line.length
+        extended_line = extend_line(line, exceeding_dist, direction="forward")
+        return extended_line.interpolate(dist)
+    elif dist < 0.0:
+        exceeding_dist = abs(dist)
+        extended_line = extend_line(line, exceeding_dist, direction="backward")
+        return extended_line.interpolate(exceeding_dist)
+    else:
+        return line.interpolate(dist)
+
 def get_curve_secant_line(entry_line, exit_line):
-    p1 = entry_line.interpolate(entry_line.length - INT_DIST)
-    p2 = exit_line.interpolate(INT_DIST)
+    p1 = extended_interpolate(entry_line, entry_line.length - INT_DIST)
+    p2 = extended_interpolate(exit_line, INT_DIST)
     curve_secant = LineString([p1, p2])
     #curve_secant_mid = curve_secant.interpolate(0.5, normalized=True)
     return curve_secant
@@ -200,7 +216,7 @@ def get_lane_distance(way_line, p_dist, track_line, normalized=False):
     The distance is positive for the right hand and negative for the left hand from the center line."""
     # Construct the normal and its negative counterpart to the line at p_dist
     normal, neg_normal = get_normal_to_line(way_line, p_dist, normalized=normalized)
-    normal_p = way_line.interpolate(p_dist, normalized=normalized)
+    normal_p = extended_interpolate(way_line, p_dist, normalized=normalized)
     # Extend lines to be sure that they intersect with track line
     normal = extend_line(normal, 100.0, direction="forward")
     neg_normal = extend_line(neg_normal, 100.0, direction="forward")
@@ -217,9 +233,9 @@ def get_normal_to_line(line, dist, normalized=False):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
     if not normalized:
         dist = dist/line.length
-    pc = line.interpolate(dist, normalized=True)
-    p1 = line.interpolate(dist-NORMAL_DX, normalized=True)
-    p2 = line.interpolate(dist+NORMAL_DX, normalized=True)
+    pc = extended_interpolate(line, dist, normalized=True)
+    p1 = extended_interpolate(line, dist-NORMAL_DX, normalized=True)
+    p2 = extended_interpolate(line, dist+NORMAL_DX, normalized=True)
     if not LineString([p1,p2]).intersects(pc):
         print 'Warning: Normal to line might be inaccurate'
     v1 = np.array([p2.x - p1.x, p2.y - p1.y, 0.0])
