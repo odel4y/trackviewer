@@ -48,7 +48,7 @@ def transform_osm_to_cartesian(osm):
         if el["type"] == "node":
             el["x"], el["y"] = transform_to_cartesian(el["lon"], el["lat"])
     return osm
-    
+
 def transform_track_to_cartesian(track):
     new_track = []
     for lon, lat, time in track:
@@ -62,7 +62,7 @@ def transform_to_cartesian(lon, lat):
     out_proj = pyproj.Proj(init='epsg:3857')   # Kartesische Koordinaten
     x,y = pyproj.transform(in_proj, out_proj, lon, lat)
     return x,y
-    
+
 def get_element_by_id(osm, el_id):
     """Returns the element with el_id from osm"""
     osm_iter = iter(osm)
@@ -73,7 +73,7 @@ def get_element_by_id(osm, el_id):
         except StopIteration:
             this_el = None
     return this_el
-    
+
 def get_line_string_from_node_ids(osm, nodes):
     """Constructs a LineString from a list of Node IDs"""
     coords = []
@@ -83,7 +83,7 @@ def get_line_string_from_node_ids(osm, nodes):
     return LineString(coords)
 
 def get_node_ids_from_way(osm, way, start_node_id=None, end_node_id=None, undershoot=False, overshoot=False):
-    """Get a list of node ids from a way starting at start_node_id or the start of 
+    """Get a list of node ids from a way starting at start_node_id or the start of
     the way (undershoot==True) and ending at end_node_id included or until the end of the way (overshoot==True)"""
     way_node_ids = way["nodes"]
     if start_node_id != None and end_node_id != None:
@@ -99,7 +99,7 @@ def get_node_ids_from_way(osm, way, start_node_id=None, end_node_id=None, unders
             return reversed(way_node_ids[end_ind:start_ind+1])
     else:
         return way_node_ids
-    
+
 def get_way_lines(int_sit, osm):
     """Return LineStrings for the actual entry and exit way separated by the intersection node.
     The resulting entry way faces towards the intersection and the exit way faces away from the intersection."""
@@ -110,7 +110,7 @@ def get_way_lines(int_sit, osm):
     entry_way_line_string = get_line_string_from_node_ids(osm, entry_way_node_ids)
     exit_way_line_string = get_line_string_from_node_ids(osm, exit_way_node_ids)
     return (entry_way_line_string, exit_way_line_string)
-        
+
 def get_intersection_angle(entry_line, exit_line):
     """Returns the angle between entry and exit way in radians with parallel ways being a zero angle.
     Only the segments touching the intersection are considered"""
@@ -143,7 +143,7 @@ def get_oneway(way):
         return way["tags"]["oneway"] == "yes"
     else:
         return False
-        
+
 def get_track_line(track):
     """Constructs a LineString from the Track"""
     coords = [(x, y) for (x, y, _) in track]
@@ -177,7 +177,7 @@ def get_curve_secant_line(entry_line, exit_line):
 #    extended_curve_secant = extend_line(curve_secant, 0.1)
 #    p1 = way_line.intersection(extended_curve_secant)
 #    return track_line.distance(p1)
-    
+
 #def get_lane_distance(w_point, track_line):
 #    return track_line.distance(w_point)
 
@@ -276,31 +276,38 @@ if __name__ == "__main__":
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
         fp, fne = os.path.split(fn)
-        print 'Processing %s' % (fne)
-        with open(fn, 'r') as f:
-            int_sit = pickle.load(f)
-        print 'Downloading OSM...'
-        osm = transform_osm_to_cartesian(get_osm_data(int_sit))
-        print 'Done.'
-        int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
-        entry_way = get_element_by_id(osm, int_sit["entry_way"])
-        exit_way = get_element_by_id(osm, int_sit["exit_way"])
-        entry_line, exit_line = get_way_lines(int_sit, osm)
-        curve_secant = get_curve_secant_line(entry_line, exit_line)
-        track_line = get_track_line(int_sit["track"])
-        features = copy.deepcopy(_features)
-        features["intersection_angle"] = get_intersection_angle(entry_line, exit_line)
-        features["maxspeed_entry"] = get_maxspeed(entry_way)
-        features["maxspeed_exit"] = get_maxspeed(exit_way)
-        features["oneway_entry"] = get_oneway(entry_way)
-        features["oneway_exit"] = get_oneway(exit_way)
-        features["lane_distance_entry"] = get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line)
-        features["lane_distance_exit"] = get_lane_distance(exit_line, INT_DIST, track_line)
-        label = copy.deepcopy(_label)
-        label["track_points"] = sample_track(curve_secant, track_line, features["intersection_angle"])
-        import json
-        text = json.dumps(features, sort_keys=True, indent=4)
-        print text
-        #plot_intersection(entry_line, exit_line, track_line, curve_secant)
-        #plot_sampled_track(label["track_points"])
-        
+        try:
+            print 'Processing %s' % (fne)
+            with open(fn, 'r') as f:
+                int_sit = pickle.load(f)
+            print 'Downloading OSM...'
+            osm = transform_osm_to_cartesian(get_osm_data(int_sit))
+            print 'Done.'
+            int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
+            entry_way = get_element_by_id(osm, int_sit["entry_way"])
+            exit_way = get_element_by_id(osm, int_sit["exit_way"])
+            entry_line, exit_line = get_way_lines(int_sit, osm)
+            curve_secant = get_curve_secant_line(entry_line, exit_line)
+            track_line = get_track_line(int_sit["track"])
+            features = copy.deepcopy(_features)
+            features["intersection_angle"] = get_intersection_angle(entry_line, exit_line)
+            features["maxspeed_entry"] = get_maxspeed(entry_way)
+            features["maxspeed_exit"] = get_maxspeed(exit_way)
+            features["oneway_entry"] = get_oneway(entry_way)
+            features["oneway_exit"] = get_oneway(exit_way)
+            features["lane_distance_entry"] = get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line)
+            features["lane_distance_exit"] = get_lane_distance(exit_line, INT_DIST, track_line)
+            label = copy.deepcopy(_label)
+            label["track_points"] = sample_track(curve_secant, track_line, features["intersection_angle"])
+            import json
+            text = json.dumps(features, sort_keys=True, indent=4)
+            print text
+            #plot_intersection(entry_line, exit_line, track_line, curve_secant)
+            #plot_sampled_track(label["track_points"])
+        except Exception as e:
+            print '################'
+            print '################'
+            print e
+            print 'Stepping to next file...'
+            print '################'
+            print '################'
