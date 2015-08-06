@@ -14,7 +14,7 @@ class OSMManager:
 
     def download_osm_map(self, lon1, lat1, lon2, lat2):
         api = overpass.API()
-        search_str = 'way["highway"~"secondary|tertiary|residential|primary|primary_link|living_street|service"](%.10f,%.10f,%.10f,%.10f);(._;>>;);out body;' % (min(lat1,lat2), min(lon1,lon2), max(lat1,lat2), max(lon1,lon2))
+        search_str = 'way["highway"~"secondary|tertiary|residential|primary|primary_link|living_street|service|unclassified"](%.10f,%.10f,%.10f,%.10f);(._;>>;);out body;' % (min(lat1,lat2), min(lon1,lon2), max(lat1,lat2), max(lon1,lon2))
         result = api.Get(search_str)
         self._osm = result["elements"]
         #import json
