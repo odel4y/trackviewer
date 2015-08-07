@@ -30,7 +30,8 @@ _features = {
 }
 
 _label = {
-    "track_points": None
+    "angles": None,
+    "radii": None
 }
 
 INT_DIST = 30.0   # distance of the secant construction points from the intersection center [m]
@@ -232,7 +233,10 @@ def get_lane_distance(way_line, p_dist, track_line, normalized=False):
             return dist_n
         else:
             return -dist_nn
-    return dist_n or -dist_nn # Return the one that is not None
+    if dist_n == dist_nn == None:
+        raise Exception("No intersection of normals with track found")
+    else:
+        return dist_n or -dist_nn # Return the one that is not None
 
 def get_normal_to_line(line, dist, normalized=False):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
@@ -258,15 +262,17 @@ def sample_track(curve_secant, track_line, intersection_angle):
     half_curve_secant = LineString([origin,\
                                     curve_secant.interpolate(0.0, normalized=True)])
     extended_ruler = extend_line(half_curve_secant, 100.0, direction="forward")
-    track_points = []
+    angles = []
+    radii = []
     angle_steps = np.linspace(0.0, np.pi, ANGLE_RES)
     for angle in np.nditer(angle_steps):
         # depending on whether it is a right or a left turn the ruler has to rotate in different directions
         rotated_ruler = affinity.rotate(extended_ruler, copysign(angle,intersection_angle), origin=origin, use_radians=True)
         r = find_closest_intersection(rotated_ruler, origin, track_line)
         if r == None: raise Exception("Sampling the track failed")
-        track_points.append((float(angle), r))
-    return track_points
+        angles.append(float(angle))
+        radii.append(float(r))
+    return angles, radii
 
 def plot_intersection(entry_line, exit_line, track_line, curve_secant):
     def plot_line(color='b', *line):
@@ -311,20 +317,22 @@ if __name__ == "__main__":
             curve_secant = get_curve_secant_line(entry_line, exit_line)
             track_line = get_track_line(int_sit["track"])
             features = copy.deepcopy(_features)
-            features["intersection_angle"] = get_intersection_angle(entry_line, exit_line)
-            features["maxspeed_entry"] = get_maxspeed(entry_way)
-            features["maxspeed_exit"] = get_maxspeed(exit_way)
+            features["intersection_angle"] = float(get_intersection_angle(entry_line, exit_line))
+            features["maxspeed_entry"] = float(get_maxspeed(entry_way))
+            features["maxspeed_exit"] = float(get_maxspeed(exit_way))
             features["oneway_entry"] = get_oneway(entry_way)
             features["oneway_exit"] = get_oneway(exit_way)
-            features["lane_distance_entry"] = get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line)
-            features["lane_distance_exit"] = get_lane_distance(exit_line, INT_DIST, track_line)
+            features["lane_distance_entry"] = float(get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line))
+            features["lane_distance_exit"] = float(get_lane_distance(exit_line, INT_DIST, track_line))
             label = copy.deepcopy(_label)
-            label["track_points"] = sample_track(curve_secant, track_line, features["intersection_angle"])
+            angles, radii = sample_track(curve_secant, track_line, features["intersection_angle"])
+            label["angles"] = angles
+            label["radii"] = radii
             import json
             text = json.dumps(features, sort_keys=True, indent=4)
             print text
             fc = (features, label)
-            with open(os.path.join(fp, 'training_data', fne), 'w') as f:
+            with open(os.path.join(fp, '..', 'training_data', fne), 'wb') as f:
                 pickle.dump(fc, f)
                 print 'Wrote', fne
             #plot_intersection(entry_line, exit_line, track_line, curve_secant)
