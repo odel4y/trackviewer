@@ -323,6 +323,10 @@ if __name__ == "__main__":
             import json
             text = json.dumps(features, sort_keys=True, indent=4)
             print text
+            fc = (features, label)
+            with open(os.path.join(fp, 'training_data', fne), 'w') as f:
+                pickle.dump(fc, f)
+                print 'Wrote', fne
             #plot_intersection(entry_line, exit_line, track_line, curve_secant)
             #plot_sampled_track(label["track_points"])
         except Exception as e:
