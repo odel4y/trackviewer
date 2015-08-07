@@ -34,14 +34,19 @@ _label = {
 }
 
 INT_DIST = 30.0   # distance of the secant construction points from the intersection center [m]
-ANGLE_RES = 180   # the angle resolution when sampling the track in polar coordinates with the curve secant centroid as origin
+ANGLE_RES = 25   # the angle resolution when sampling the track in polar coordinates with the curve secant centroid as origin
 
 def get_osm_data(int_sit):
-    api = overpass.API()
-    search_str = '(way(%d);way(%d););(._;>>;);out;' % \
-                    (int_sit["entry_way"], int_sit["exit_way"])
-    result = api.Get(search_str)
-    return result["elements"]
+    while True:
+        try:
+            api = overpass.API()
+            search_str = '(way(%d);way(%d););(._;>>;);out;' % \
+                            (int_sit["entry_way"], int_sit["exit_way"])
+            result = api.Get(search_str)
+            return result["elements"]
+        except Exception as e:
+            print e
+            print 'Retrying OSM Download...'
 
 def transform_osm_to_cartesian(osm):
     for el in osm:
