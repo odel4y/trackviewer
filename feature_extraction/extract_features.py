@@ -36,10 +36,13 @@ _label = {
 
 INT_DIST = 30.0   # distance of the secant construction points from the intersection center [m]
 ANGLE_RES = 25   # the angle resolution when sampling the track in polar coordinates with the curve secant centroid as origin
+MAX_OSM_TRIES = 3 # the maximum number of tries to download OSM data
 
 def get_osm_data(int_sit):
-    while True:
+    tries = 0
+    while tries < 3:
         try:
+            tries += 1
             api = overpass.API()
             search_str = '(way(%d);way(%d););(._;>>;);out;' % \
                             (int_sit["entry_way"], int_sit["exit_way"])
