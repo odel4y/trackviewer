@@ -153,9 +153,8 @@ def get_oneway(way):
     else:
         return False
 
-def get_track_line(track):
-    """Constructs a LineString from the Track"""
-    coords = [(x, y) for (x, y, _) in track]
+def get_line_from_coords(coords):
+    """Constructs a LineString from coordinates"""
     track_line = LineString(coords)
     return track_line
 
@@ -277,7 +276,21 @@ def sample_track(curve_secant, track_line, intersection_angle):
         radii.append(float(r))
     return angles, radii
 
-def plot_intersection(entry_line, exit_line, track_line, curve_secant):
+def get_predicted_line(curve_secant, radii_pred, intersection_angle):
+    """Get a prediction for the track along the curve and convert it into a LineString"""
+    origin = curve_secant.interpolate(0.5, normalized=True)
+    half_curve_secant = LineString([origin,\
+                                    curve_secant.interpolate(0.0, normalized=True)])
+    angles = np.linspace(0.0, np.pi, len(radii_pred))
+    points = []
+    for i in xrange(len(radii_pred)):
+        # depending on whether it is a right or a left turn the ruler has to rotate in different directions
+        rotated_ruler = affinity.rotate(half_curve_secant, copysign(angles[i],intersection_angle), origin=origin, use_radians=True)
+        p = extended_interpolate(rotated_ruler, radii_pred[i], normalized=False)
+        points.append(p)
+    return LineString(points)
+
+def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_line=None):
     def plot_line(color='b', *line):
         for l in line:
             coords = list(l.coords)
@@ -288,18 +301,18 @@ def plot_intersection(entry_line, exit_line, track_line, curve_secant):
     fig = plt.figure()
     plt.hold(True)
     plt.axis('equal')
-    plot_line('b', entry_line, exit_line)
+    plot_line('k', entry_line, exit_line)
     plot_line('m', normal_en, normal_ex)
     plot_line('g', neg_normal_en, neg_normal_ex)
     plot_line('r', track_line)
+    if predicted_line: plot_line('b', predicted_line)
     plot_line('k', curve_secant)
     plt.show(block=False)
 
-def plot_sampled_track(track_points):
+def plot_sampled_track(label):
     fig = plt.figure()
     plt.hold(True)
-    x, y = zip(*track_points)
-    plt.plot(x,y,'b.-')
+    plt.plot(label["angles"],label["radii"],'b.-')
     plt.show()
 
 def convert_to_array(features, label):
@@ -319,16 +332,22 @@ def convert_to_array(features, label):
     label_row = np.array(label["radii"])
     return feature_row, label_row
 
-def get_features(int_sit):
+def get_osm(int_sit):
     print 'Downloading OSM...'
-    osm = transform_osm_to_cartesian(get_osm_data(int_sit))
+    osm = get_osm_data(int_sit)
     print 'Done.'
     int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
+    return transform_osm_to_cartesian(osm)
+
+def get_intersection_geometry(int_sit, osm):
     entry_way = get_element_by_id(osm, int_sit["entry_way"])
     exit_way = get_element_by_id(osm, int_sit["exit_way"])
     entry_line, exit_line = get_way_lines(int_sit, osm)
     curve_secant = get_curve_secant_line(entry_line, exit_line)
-    track_line = get_track_line(int_sit["track"])
+    track_line = get_line_from_coords([(x,y) for (x,y,_) in int_sit["track"]])
+    return entry_way, exit_way, entry_line, exit_line, curve_secant, track_line
+
+def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track_line):
     features = copy.deepcopy(_features)
     features["intersection_angle"] = float(get_intersection_angle(entry_line, exit_line))
     features["maxspeed_entry"] = float(get_maxspeed(entry_way))
@@ -346,6 +365,7 @@ def get_features(int_sit):
 if __name__ == "__main__":
     X = None
     y = None
+    pickled_files = []
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
         fp, fne = os.path.split(fn)
@@ -353,7 +373,8 @@ if __name__ == "__main__":
             print 'Processing %s' % (fne)
             with open(fn, 'r') as f:
                 int_sit = pickle.load(f)
-            features, label = get_features(int_sit)
+            osm = get_osm(int_sit)
+            features, label = get_features(int_sit, *get_intersection_geometry(int_sit, osm))
             # print features in readable format
             import json
             text = json.dumps(features, sort_keys=True, indent=4)
@@ -365,8 +386,8 @@ if __name__ == "__main__":
             else:
                 X = np.vstack((X, feature_row))
                 y = np.vstack((y, label_row))
-            #plot_intersection(entry_line, exit_line, track_line, curve_secant)
-            #plot_sampled_track(label["track_points"])
+            pickled_files.append(fn)
+            # plot_intersection(entry_line, exit_line, curve_secant, track_line)
         except Exception as e:
             print '################'
             print '################'
@@ -376,4 +397,4 @@ if __name__ == "__main__":
             print '################'
     with open(os.path.join(fp, '..', 'training_data', 'samples.pickle'), 'wb') as f:
         print 'Writing database...'
-        pickle.dump((X,y), f)
+        pickle.dump((X,y,pickled_files), f)
