@@ -302,7 +302,50 @@ def plot_sampled_track(track_points):
     plt.plot(x,y,'b.-')
     plt.show()
 
+def convert_to_array(features, label):
+    """Convert features to a number and put them in numpy array"""
+    def convert_boolean(b):
+        if b: return 1.0
+        else: return -1.0
+    label_len = len(label["angles"])
+    feature_row = np.zeros((1,7))
+    feature_row[0][0] = features["intersection_angle"]
+    feature_row[0][1] = features["maxspeed_entry"]
+    feature_row[0][2] = features["maxspeed_exit"]
+    feature_row[0][3] = features["lane_distance_entry"]
+    feature_row[0][4] = features["lane_distance_exit"]
+    feature_row[0][5] = convert_boolean(features["oneway_entry"])
+    feature_row[0][6] = convert_boolean(features["oneway_exit"])
+    label_row = np.array(label["radii"])
+    return feature_row, label_row
+
+def get_features(int_sit):
+    print 'Downloading OSM...'
+    osm = transform_osm_to_cartesian(get_osm_data(int_sit))
+    print 'Done.'
+    int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
+    entry_way = get_element_by_id(osm, int_sit["entry_way"])
+    exit_way = get_element_by_id(osm, int_sit["exit_way"])
+    entry_line, exit_line = get_way_lines(int_sit, osm)
+    curve_secant = get_curve_secant_line(entry_line, exit_line)
+    track_line = get_track_line(int_sit["track"])
+    features = copy.deepcopy(_features)
+    features["intersection_angle"] = float(get_intersection_angle(entry_line, exit_line))
+    features["maxspeed_entry"] = float(get_maxspeed(entry_way))
+    features["maxspeed_exit"] = float(get_maxspeed(exit_way))
+    features["oneway_entry"] = get_oneway(entry_way)
+    features["oneway_exit"] = get_oneway(exit_way)
+    features["lane_distance_entry"] = float(get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line))
+    features["lane_distance_exit"] = float(get_lane_distance(exit_line, INT_DIST, track_line))
+    label = copy.deepcopy(_label)
+    angles, radii = sample_track(curve_secant, track_line, features["intersection_angle"])
+    label["angles"] = angles
+    label["radii"] = radii
+    return features, label
+
 if __name__ == "__main__":
+    X = None
+    y = None
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
         fp, fne = os.path.split(fn)
@@ -310,34 +353,18 @@ if __name__ == "__main__":
             print 'Processing %s' % (fne)
             with open(fn, 'r') as f:
                 int_sit = pickle.load(f)
-            print 'Downloading OSM...'
-            osm = transform_osm_to_cartesian(get_osm_data(int_sit))
-            print 'Done.'
-            int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
-            entry_way = get_element_by_id(osm, int_sit["entry_way"])
-            exit_way = get_element_by_id(osm, int_sit["exit_way"])
-            entry_line, exit_line = get_way_lines(int_sit, osm)
-            curve_secant = get_curve_secant_line(entry_line, exit_line)
-            track_line = get_track_line(int_sit["track"])
-            features = copy.deepcopy(_features)
-            features["intersection_angle"] = float(get_intersection_angle(entry_line, exit_line))
-            features["maxspeed_entry"] = float(get_maxspeed(entry_way))
-            features["maxspeed_exit"] = float(get_maxspeed(exit_way))
-            features["oneway_entry"] = get_oneway(entry_way)
-            features["oneway_exit"] = get_oneway(exit_way)
-            features["lane_distance_entry"] = float(get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line))
-            features["lane_distance_exit"] = float(get_lane_distance(exit_line, INT_DIST, track_line))
-            label = copy.deepcopy(_label)
-            angles, radii = sample_track(curve_secant, track_line, features["intersection_angle"])
-            label["angles"] = angles
-            label["radii"] = radii
+            features, label = get_features(int_sit)
+            # print features in readable format
             import json
             text = json.dumps(features, sort_keys=True, indent=4)
             print text
-            fc = (features, label)
-            with open(os.path.join(fp, '..', 'training_data', fne), 'wb') as f:
-                pickle.dump(fc, f)
-                print 'Wrote', fne
+            feature_row, label_row = convert_to_array(features, label)
+            if X == None and y == None:
+                X = feature_row
+                y = label_row
+            else:
+                X = np.vstack((X, feature_row))
+                y = np.vstack((y, label_row))
             #plot_intersection(entry_line, exit_line, track_line, curve_secant)
             #plot_sampled_track(label["track_points"])
         except Exception as e:
@@ -347,3 +374,6 @@ if __name__ == "__main__":
             print 'Stepping to next file...'
             print '################'
             print '################'
+    with open(os.path.join(fp, '..', 'training_data', 'samples.pickle'), 'wb') as f:
+        print 'Writing database...'
+        pickle.dump((X,y), f)
