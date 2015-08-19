@@ -120,13 +120,18 @@ def get_way_lines(int_sit, osm):
     exit_way_line_string = get_line_string_from_node_ids(osm, exit_way_node_ids)
     return (entry_way_line_string, exit_way_line_string)
 
+def get_vec_angle(line1, line2):
+    """Return angle between two vectors"""
+    normal = np.cross(line1, line2) # The sign of the angle can be determined
+    return np.arccos(np.dot(line1, line2)/(np.linalg.norm(line1) * np.linalg.norm(line2))) * normal / np.linalg.norm(normal)
+
 def get_intersection_angle(entry_line, exit_line):
     """Returns the angle between entry and exit way in radians with parallel ways being a zero angle.
     Only the segments touching the intersection are considered"""
+    #TODO: Use the averaged intersection angle over the distance INT_DIST instead?
     entry_v = np.array(entry_line.coords[-1]) - np.array(entry_line.coords[-2])
     exit_v = np.array(exit_line.coords[1]) - np.array(exit_line.coords[0])
-    normal = np.cross(entry_v, exit_v) # The sign of the angle can be determined
-    return np.arccos(np.dot(entry_v, exit_v)/(np.linalg.norm(entry_v) * np.linalg.norm(exit_v))) * normal / np.linalg.norm(normal)
+    return get_vec_angle(entry_v, exit_v)
 
 def get_maxspeed(way):
     """Get the tagged maxspeed for a way. If no maxspeed is
@@ -197,14 +202,6 @@ def get_curve_secant_line(entry_line, exit_line):
     #curve_secant_mid = curve_secant.interpolate(0.5, normalized=True)
     return curve_secant
 
-#def get_lane_distance(way_line, track_line, curve_secant):
-#    extended_curve_secant = extend_line(curve_secant, 0.1)
-#    p1 = way_line.intersection(extended_curve_secant)
-#    return track_line.distance(p1)
-
-#def get_lane_distance(w_point, track_line):
-#    return track_line.distance(w_point)
-
 def find_closest_intersection(normal, normal_p, track_line):
     """Helper function to handle the different types of intersection"""
     intsec = normal.intersection(track_line)
@@ -239,6 +236,20 @@ def get_lane_distance(way_line, p_dist, track_line, normalized=False):
         raise Exception("No intersection of normals with track found")
     else:
         return dist_n or -dist_nn # Return the one that is not None
+
+def get_reversed_line(way_line):
+    """Reverse the order of the coordinates in a LineString"""
+    rev_line = LineString(reversed(way_line.coords))
+    return rev_line
+
+def get_line_curvature(way_line):
+    """Get the curvature of a line over INT_DIST"""
+    normal1,_ = get_normal_to_line(way_line, 0.0)
+    normal2,_ = get_normal_to_line(way_line, INT_DIST)
+    vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
+    vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
+    d_angle = get_vec_angle(vec1, vec2)
+    return d_angle/INT_DIST
 
 def get_normal_to_line(line, dist, normalized=False):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
