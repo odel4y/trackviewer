@@ -27,6 +27,8 @@ _features = {
     "lane_distance_exit": None,
     "oneway_entry": None,
     "oneway_exit": None
+    #"curvature_entry": None,
+    #"curvature_exit": None
 }
 
 _label = {
@@ -332,7 +334,7 @@ def convert_to_array(features, label):
         if b: return 1.0
         else: return -1.0
     label_len = len(label["angles"])
-    feature_row = np.zeros((1,7))
+    feature_row = np.zeros((1,len(features)))
     feature_row[0][0] = features["intersection_angle"]
     feature_row[0][1] = features["maxspeed_entry"]
     feature_row[0][2] = features["maxspeed_exit"]
@@ -340,6 +342,8 @@ def convert_to_array(features, label):
     feature_row[0][4] = features["lane_distance_exit"]
     feature_row[0][5] = convert_boolean(features["oneway_entry"])
     feature_row[0][6] = convert_boolean(features["oneway_exit"])
+    #feature_row[0][7] = features["curvature_entry"]
+    #feature_row[0][8] = features["curvature_exit"]
     label_row = np.array(label["radii"])
     return feature_row, label_row
 
@@ -367,6 +371,8 @@ def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_seca
     features["oneway_exit"] = get_oneway(exit_way)
     features["lane_distance_entry"] = float(get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line))
     features["lane_distance_exit"] = float(get_lane_distance(exit_line, INT_DIST, track_line))
+    #features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
+    #features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
     label = copy.deepcopy(_label)
     angles, radii = sample_track(curve_secant, track_line, features["intersection_angle"])
     label["angles"] = angles
