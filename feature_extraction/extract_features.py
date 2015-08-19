@@ -122,10 +122,12 @@ def get_way_lines(int_sit, osm):
     exit_way_line_string = get_line_string_from_node_ids(osm, exit_way_node_ids)
     return (entry_way_line_string, exit_way_line_string)
 
-def get_vec_angle(line1, line2):
+def get_vec_angle(vec1, vec2):
     """Return angle between two vectors"""
-    normal = np.cross(line1, line2) # The sign of the angle can be determined
-    return np.arccos(np.dot(line1, line2)/(np.linalg.norm(line1) * np.linalg.norm(line2))) * normal / np.linalg.norm(normal)
+    normal = np.cross(vec1, vec2) # The sign of the angle can be determined
+    angle = np.arccos(np.dot(vec1, vec2)/(np.linalg.norm(vec1) * np.linalg.norm(vec2))) * normal / np.linalg.norm(normal)
+    if np.isnan(angle): angle = 0.0 # Account for numeric inaccuracies
+    return angle
 
 def get_intersection_angle(entry_line, exit_line):
     """Returns the angle between entry and exit way in radians with parallel ways being a zero angle.
