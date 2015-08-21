@@ -206,40 +206,53 @@ def get_curve_secant_line(entry_line, exit_line):
     #curve_secant_mid = curve_secant.interpolate(0.5, normalized=True)
     return curve_secant
 
-def find_closest_intersection(normal, normal_p, track_line):
-    """Helper function to handle the different types of intersection"""
-    intsec = normal.intersection(track_line)
+def find_closest_intersection(line, line_p, track_line):
+    """Helper function to handle the different types of intersection and
+    find the closest intersection if there are more than one"""
+    intsec = line.intersection(track_line)
     if type(intsec) == Point:
-        return normal_p.distance(intsec)
+        return line_p.distance(intsec)
     elif type(intsec) == MultiPoint:
         distances = []
         for p in intsec:
-            distances.append(normal_p.distance(p))
+            distances.append(line_p.distance(p))
         return min(distances)
     elif type(intsec) == GeometryCollection and len(intsec) <= 0:
         return None
     else: raise Exception("No valid intersection type")
 
-def get_lane_distance(way_line, p_dist, track_line, normalized=False):
-    """Get the distance of the track to the way projected along its normal at p_dist.
-    The distance is positive for the right hand and negative for the left hand from the center line."""
-    # Construct the normal and its negative counterpart to the line at p_dist
-    normal, neg_normal = get_normal_to_line(way_line, p_dist, normalized=normalized)
-    normal_p = extended_interpolate(way_line, p_dist, normalized=normalized)
-    # Extend lines to be sure that they intersect with track line
-    normal = extend_line(normal, 100.0, direction="forward")
-    neg_normal = extend_line(neg_normal, 100.0, direction="forward")
-    dist_n = find_closest_intersection(normal, normal_p, track_line)
-    dist_nn = find_closest_intersection(neg_normal, normal_p, track_line)
-    if dist_n != None and dist_nn != None:
-        if dist_n <= dist_nn:
-            return dist_n
-        else:
-            return -dist_nn
-    if dist_n == dist_nn == None:
-        raise Exception("No intersection of normals with track found")
-    else:
-        return dist_n or -dist_nn # Return the one that is not None
+def get_lane_distance(curve_secant, track_line):
+    """Get the distance of the track to the centre point of the curve secant at 0
+    and 180 degrees angle"""
+    origin_p = curve_secant.interpolate(0.5, normalized=True)
+    secant_start_p = curve_secant.interpolate(0.0, normalized=True)
+    secant_end_p = curve_secant.interpolate(1.0, normalized=True)
+    extended_secant_entry = extend_line(LineString([origin_p, secant_start_p]), 100.0, direction="forward")
+    extended_secant_exit = extend_line(LineString([origin_p, secant_end_p]), 100.0, direction="forward")
+    lane_distance_entry = find_closest_intersection(extended_secant_entry, origin_p, track_line)
+    lane_distance_exit = find_closest_intersection(extended_secant_exit, origin_p, track_line)
+    return lane_distance_entry, lane_distance_exit
+
+# def get_lane_distance(way_line, p_dist, track_line, normalized=False):
+#     """Get the distance of the track to the way projected along its normal at p_dist.
+#     The distance is positive for the right hand and negative for the left hand from the center line."""
+#     # Construct the normal and its negative counterpart to the line at p_dist
+#     normal, neg_normal = get_normal_to_line(way_line, p_dist, normalized=normalized)
+#     normal_p = extended_interpolate(way_line, p_dist, normalized=normalized)
+#     # Extend lines to be sure that they intersect with track line
+#     normal = extend_line(normal, 100.0, direction="forward")
+#     neg_normal = extend_line(neg_normal, 100.0, direction="forward")
+#     dist_n = find_closest_intersection(normal, normal_p, track_line)
+#     dist_nn = find_closest_intersection(neg_normal, normal_p, track_line)
+#     if dist_n != None and dist_nn != None:
+#         if dist_n <= dist_nn:
+#             return dist_n
+#         else:
+#             return -dist_nn
+#     if dist_n == dist_nn == None:
+#         raise Exception("No intersection of normals with track found")
+#     else:
+#         return dist_n or -dist_nn # Return the one that is not None
 
 def get_reversed_line(way_line):
     """Reverse the order of the coordinates in a LineString"""
@@ -371,10 +384,13 @@ def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_seca
     features["maxspeed_exit"] = float(get_maxspeed(exit_way))
     features["oneway_entry"] = get_oneway(entry_way)
     features["oneway_exit"] = get_oneway(exit_way)
-    features["lane_distance_entry"] = float(get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line))
-    features["lane_distance_exit"] = float(get_lane_distance(exit_line, INT_DIST, track_line))
-    #features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
-    #features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
+    lane_distance_entry, lane_distance_exit = get_lane_distance(curve_secant, track_line)
+    features["lane_distance_entry"] = float(lane_distance_entry)
+    features["lane_distance_exit"] = float(lane_distance_exit)
+    # features["lane_distance_entry"] = float(get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line))
+    # features["lane_distance_exit"] = float(get_lane_distance(exit_line, INT_DIST, track_line))
+    # features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
+    # features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
     label = copy.deepcopy(_label)
     angles, radii = sample_track(curve_secant, track_line, features["intersection_angle"])
     label["angles"] = angles
