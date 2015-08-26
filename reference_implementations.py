@@ -5,6 +5,7 @@ import numpy as np
 import scipy.interpolate
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from extract_features import extended_interpolate
+from constants import LANE_WIDTH
 
 def parametric_spline(x, y, k=3, resolution=100):
     """Return a parametric univariate spline through x, y evaluated at resolution"""

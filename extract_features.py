@@ -12,6 +12,7 @@ import numpy as np
 import copy
 import pdb
 import matplotlib.pyplot as plt
+from constants import INT_DIST, ANGLE_RES, MAX_OSM_TRIES
 
 # Features
 # - Straßenwinkel zueinander
@@ -35,10 +36,6 @@ _label = {
     "angles": None,
     "radii": None
 }
-
-INT_DIST = 30.0   # distance of the secant construction points from the intersection center [m]
-ANGLE_RES = 25   # the angle resolution when sampling the track in polar coordinates with the curve secant centroid as origin
-MAX_OSM_TRIES = 3 # the maximum number of tries to download OSM data
 
 def get_osm_data(int_sit):
     tries = 0
