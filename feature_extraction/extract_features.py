@@ -318,7 +318,7 @@ def get_predicted_line(curve_secant, radii_pred, intersection_angle):
         points.append(p)
     return LineString(points)
 
-def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_line=None):
+def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_line=None, comparison_line=None):
     def plot_line(color='b', *line):
         for l in line:
             coords = list(l.coords)
@@ -350,6 +350,7 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     plot_line('r', track_line)
     plot_arrows_along_line('r', track_line)
     if predicted_line: plot_line('b', predicted_line)
+    if comparison_line: plot_line('m', comparison_line)
     plot_line('k', curve_secant)
     plt.show(block=False)
 

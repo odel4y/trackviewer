@@ -10,6 +10,7 @@ import sklearn.ensemble
 from sklearn.metrics import mean_squared_error
 from matplotlib import pyplot
 import extract_features
+import reference_implementations
 
 parser = argparse.ArgumentParser(description='No description')
 parser.add_argument('-d', '--database', default="../data/training_data/samples.pickle")
@@ -54,7 +55,8 @@ def test_regressor(reg, X_test, y_test, test_files, plot):
             _, _, entry_line, exit_line, curve_secant, track_line = extract_features.get_intersection_geometry(int_sit, osm)
             intersection_angle = float(extract_features.get_intersection_angle(entry_line, exit_line))
             predicted_line = extract_features.get_predicted_line(curve_secant, y_pred[0], intersection_angle)
-            extract_features.plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_line)
+            comparison_line = reference_implementations.geiger_path(entry_line, exit_line, 30.)
+            extract_features.plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_line, comparison_line)
             fig = pyplot.figure()
             pyplot.hold(True)
             pyplot.plot(range(len(y_true)), y_true, 'r.-')
