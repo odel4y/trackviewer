@@ -265,7 +265,7 @@ def get_line_curvature(way_line):
     d_angle = get_vec_angle(vec1, vec2)
     return d_angle/INT_DIST
 
-def get_normal_to_line(line, dist, normalized=False, direction="positive"):
+def get_normal_to_line(line, dist, normalized=False, direction="forward"):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
     if not normalized:
         dist = dist/line.length
@@ -277,13 +277,15 @@ def get_normal_to_line(line, dist, normalized=False, direction="positive"):
     normal = np.cross(v1, v2)
     normal = tuple(normal/np.linalg.norm(normal))[0:2]
     normal_line = LineString([(pc.x, pc.y), (pc.x + normal[0], pc.y + normal[1])])
-    if direction == "positive":
+    if direction == "forward":
         return normal_line
     neg_normal_line = LineString([(pc.x, pc.y), (pc.x - normal[0], pc.y - normal[1])])
-    if direction == "negative":
+    if direction == "backward":
         return neg_normal_line
-    else:
+    elif direction == "both":
         return normal_line, neg_normal_line
+    else:
+        raise NotImplementedError('The option direction="%s" is not implemented.' % direction)
 
 def sample_track(curve_secant, track_line, intersection_angle):
     """Sample the track's distance to the centroid of the curve_secant at constant angle steps.
