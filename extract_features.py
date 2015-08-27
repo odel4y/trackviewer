@@ -272,8 +272,6 @@ def get_normal_to_line(line, dist, normalized=False):
     pc = extended_interpolate(line, dist, normalized=True)
     p1 = extended_interpolate(line, dist-NORMAL_DX, normalized=True)
     p2 = extended_interpolate(line, dist+NORMAL_DX, normalized=True)
-    if not LineString([p1,p2]).intersects(pc):
-        print 'Warning: Normal to line might be inaccurate'
     v1 = np.array([p2.x - p1.x, p2.y - p1.y, 0.0])
     v2 = np.array([0.0, 0.0, 1.0])
     normal = np.cross(v1, v2)
