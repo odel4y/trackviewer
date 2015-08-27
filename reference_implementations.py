@@ -13,12 +13,8 @@ def parametric_combined_spline(x, y, k=3, resolution=100, kv=None):
     y = np.array(y)
 
     nt = np.linspace(0, 1, resolution)
-    # t = np.zeros(x.shape)
-    # # Calculate the partial distances between coordinates
-    # t[1:] = np.sqrt((x[1:] - x[:-1])**2 + (y[1:] - y[:-1])**2)
-    # # Sum up the partial distances to have the absolute distance from start point
-    # t = np.cumsum(t)
-    # t /= t[-1]
+
+    # Prepare linear combination of splines with given knot vector
     tckp,u = scipy.interpolate.splprep([x,y],k=k,t=kv)
     x2, y2 = scipy.interpolate.splev(np.linspace(0,1,400), tckp)
 
