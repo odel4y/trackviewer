@@ -258,14 +258,14 @@ def get_reversed_line(way_line):
 
 def get_line_curvature(way_line):
     """Get the curvature of a line over INT_DIST"""
-    normal1,_ = get_normal_to_line(way_line, 0.0)
-    normal2,_ = get_normal_to_line(way_line, INT_DIST)
+    normal1 = get_normal_to_line(way_line, 0.0)
+    normal2 = get_normal_to_line(way_line, INT_DIST)
     vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
     vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
     d_angle = get_vec_angle(vec1, vec2)
     return d_angle/INT_DIST
 
-def get_normal_to_line(line, dist, normalized=False):
+def get_normal_to_line(line, dist, normalized=False, direction="positive"):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
     if not normalized:
         dist = dist/line.length
@@ -277,8 +277,13 @@ def get_normal_to_line(line, dist, normalized=False):
     normal = np.cross(v1, v2)
     normal = tuple(normal/np.linalg.norm(normal))[0:2]
     normal_line = LineString([(pc.x, pc.y), (pc.x + normal[0], pc.y + normal[1])])
+    if direction == "positive":
+        return normal_line
     neg_normal_line = LineString([(pc.x, pc.y), (pc.x - normal[0], pc.y - normal[1])])
-    return normal_line, neg_normal_line
+    if direction == "negative":
+        return neg_normal_line
+    else:
+        return normal_line, neg_normal_line
 
 def sample_track(curve_secant, track_line, intersection_angle):
     """Sample the track's distance to the centroid of the curve_secant at constant angle steps.
@@ -322,7 +327,7 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     def plot_arrow(color, center_line, dist, normalized=False):
         ARROW_LENGTH = 5.0
         origin_p = center_line.interpolate(dist, normalized=normalized)
-        normal_line, _ = get_normal_to_line(center_line, dist, normalized=normalized)
+        normal_line = get_normal_to_line(center_line, dist, normalized=normalized)
         outer_p = extended_interpolate(center_line, center_line.length - ARROW_LENGTH)
         half_arrow = extend_line(normal_line, ARROW_LENGTH - normal_line.length, direction="forward")
         half_arrow = affinity.rotate(half_arrow, 45.0, origin=origin_p)
@@ -334,8 +339,8 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
         arrow_count = int(center_line.length / MIN_DIST)
         for i in range(1, arrow_count + 1):
             plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
-    normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False)
-    normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False)
+    normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
+    normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     fig = plt.figure()
     plt.hold(True)
     plt.axis('equal')
