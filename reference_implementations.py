@@ -45,9 +45,9 @@ def parametric_spline(x, y, k=3, resolution=100, kv=None):
     y2 = y_spl(nt)
     return x2, y2
 
-def geiger_path(entry_line, exit_line):
+def get_geiger_line(entry_line, exit_line):
     # w = 2 * LANE_WIDTH
-    w = 10.0
+    w = 30.0
     center_p = exit_line.interpolate(0.)
     far_entry_n =   get_normal_to_line(entry_line, entry_line.length - 70.0, direction="backward")
     entry_n =       get_normal_to_line(entry_line, entry_line.length - w, direction="backward")

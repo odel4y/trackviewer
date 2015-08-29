@@ -287,8 +287,8 @@ def get_normal_to_line(line, dist, normalized=False, direction="forward"):
     else:
         raise NotImplementedError('The option direction="%s" is not implemented.' % direction)
 
-def sample_track(curve_secant, track_line, intersection_angle):
-    """Sample the track's distance to the centroid of the curve_secant at constant angle steps.
+def sample_line(curve_secant, track_line, intersection_angle):
+    """Sample the line's distance to the centroid of the curve_secant at constant angle steps.
     Returns polar coordinates"""
     origin = curve_secant.interpolate(0.5, normalized=True)
     half_curve_secant = LineString([origin,\
@@ -411,7 +411,7 @@ def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_seca
     # features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
     # features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
     label = copy.deepcopy(_label)
-    angles, radii = sample_track(curve_secant, track_line, features["intersection_angle"])
+    angles, radii = sample_line(curve_secant, track_line, features["intersection_angle"])
     label["angles"] = angles
     label["radii"] = radii
     return features, label
