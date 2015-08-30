@@ -2,6 +2,8 @@
 #coding:utf-8
 from abc import ABCMeta, abstractmethod
 from extract_features import get_intersection_angle, get_curve_secant_line, sample_line
+from sklearn.metrics import mean_squared_error
+from __future__ import division
 
 _test_sample = {
     'geometry': {
@@ -42,6 +44,22 @@ def test(algorithms, test_samples):
             track_line = test_sample['label']['track_line']
             intersection_angle = get_intersection_angle(entry_line, exit_line)
             curve_secant = get_curve_secant_line(entry_line, exit_line)
-            track_radii = sample_line(curve_secant, track_line, intersection_angle)
+            y_true = sample_line(curve_secant, track_line, intersection_angle)
             predicted_line = this_algorithm.predict(test_sample)
-            radii =
+            _, y_pred = sample_line(curve_secant, predicted_line, intersection_angle)
+            mse = mean_squared_error(y_true, y_pred[0])
+            cumulated_mse += mse
+            average_mse += mse/len(test_samples)
+            if min_mse != None:
+                min_mse = min(min_mse, mse)
+            else:
+                min_mse = mse
+            if max_mse != None:
+                max_mse = max(max_mse, mse)
+            else:
+                max_mse = mse
+        print 'Test with algorithm:', this_algorithm.get_name()
+        print 'Cumulated MSE:', cumulated_mse
+        print 'Average MSE:', average_mse
+        print 'Minimum MSE:', min_mse
+        print 'Maximum MSE:', max_mse
