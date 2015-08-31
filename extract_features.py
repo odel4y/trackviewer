@@ -12,7 +12,7 @@ import numpy as np
 import copy
 import pdb
 import matplotlib.pyplot as plt
-from constants import INT_DIST, ANGLE_RES, MAX_OSM_TRIES
+from constants import INT_DIST, ANGLE_RES, MAX_OSM_TRIES, LANE_WIDTH
 
 # Features
 # - Straßenwinkel zueinander
@@ -20,17 +20,22 @@ from constants import INT_DIST, ANGLE_RES, MAX_OSM_TRIES
 # - Fahrstreifenwahl am Eingang/Ausgang
 #   + Angegeben durch Abstand der Fahrstreifenmitte von Mittellinie der Straße in Openstreetmap
 # - Ist Eingang oder Ausgang Einbahnstraße?
-_features = {
-    "intersection_angle": None,
-    "maxspeed_entry": None,
-    "maxspeed_exit": None,
-    "lane_distance_entry": None,
-    "lane_distance_exit": None,
-    "oneway_entry": None,
-    "oneway_exit": None
-    #"curvature_entry": None,
-    #"curvature_exit": None
-}
+_feature_types = [
+    "intersection_angle",
+    "maxspeed_entry",
+    "maxspeed_exit",
+    "lane_distance_entry_exact",
+    "lane_distance_exit_exact",
+    "lane_distance_entry_lane_center",
+    "lane_distance_exit_lane_center"
+    "oneway_entry",
+    "oneway_exit",
+    "curvature_entry",
+    "curvature_exit",
+    "vehicle_speed_entry",
+    "vehicle_speed_exit"
+]
+_features = {name: None for name in _feature_types}
 
 _label = {
     "angles": None,
@@ -159,6 +164,10 @@ def get_oneway(way):
     else:
         return False
 
+def get_vehicle_speed(entry_line, exit_line, track_line):
+    # FIXME: Implement
+    return 0.0, 0.0
+
 def get_line_from_coords(coords):
     """Constructs a LineString from coordinates"""
     track_line = LineString(coords)
@@ -218,7 +227,7 @@ def find_closest_intersection(line, line_p, track_line):
         return None
     else: raise Exception("No valid intersection type")
 
-def get_lane_distance(curve_secant, track_line):
+def get_lane_distance_exact(curve_secant, track_line):
     """Get the distance of the track to the centre point of the curve secant at 0
     and 180 degrees angle"""
     origin_p = curve_secant.interpolate(0.5, normalized=True)
@@ -230,7 +239,22 @@ def get_lane_distance(curve_secant, track_line):
     lane_distance_exit = find_closest_intersection(extended_secant_exit, origin_p, track_line)
     return lane_distance_entry, lane_distance_exit
 
-# def get_lane_distance(way_line, p_dist, track_line, normalized=False):
+def get_lane_distance_lane_center(entry_line, exit_line, curve_secant):
+    """Get the distance of the lane center currently driven on to the centre point
+    """
+    # Find center of lanes and extend the lines to be sure to intersect with curve secant
+    lane_center_entry_line = extend_line(entry_line.parallel_offset(LANE_WIDTH/2), 100.0, direction="backward")
+    lane_center_exit_line = extend_line(exit_line.parallel_offset(LANE_WIDTH/2), 100.0, direction="forward")
+    origin_p = curve_secant.interpolate(0.5, normalized=True)
+    secant_start_p = curve_secant.interpolate(0.0, normalized=True)
+    secant_end_p = curve_secant.interpolate(1.0, normalized=True)
+    extended_secant_entry = extend_line(LineString([origin_p, secant_start_p]), 100.0, direction="forward")
+    extended_secant_exit = extend_line(LineString([origin_p, secant_end_p]), 100.0, direction="forward")
+    lane_distance_entry = find_closest_intersection(extended_secant_entry, origin_p, lane_center_entry_line)
+    lane_distance_exit = find_closest_intersection(extended_secant_exit, origin_p, lane_center_exit_line)
+    return lane_distance_entry, lane_distance_exit
+
+# def get_lane_distance_projected_normal(way_line, p_dist, track_line, normalized=False):
 #     """Get the distance of the track to the way projected along its normal at p_dist.
 #     The distance is positive for the right hand and negative for the left hand from the center line."""
 #     # Construct the normal and its negative counterpart to the line at p_dist
@@ -361,25 +385,6 @@ def plot_sampled_track(label):
     plt.plot(label["angles"],label["radii"],'b.-')
     plt.show()
 
-def convert_to_array(features, label):
-    """Convert features to a number and put them in numpy array"""
-    def convert_boolean(b):
-        if b: return 1.0
-        else: return -1.0
-    label_len = len(label["angles"])
-    feature_row = np.zeros((1,len(features)))
-    feature_row[0][0] = features["intersection_angle"]
-    feature_row[0][1] = features["maxspeed_entry"]
-    feature_row[0][2] = features["maxspeed_exit"]
-    feature_row[0][3] = features["lane_distance_entry"]
-    feature_row[0][4] = features["lane_distance_exit"]
-    feature_row[0][5] = convert_boolean(features["oneway_entry"])
-    feature_row[0][6] = convert_boolean(features["oneway_exit"])
-    #feature_row[0][7] = features["curvature_entry"]
-    #feature_row[0][8] = features["curvature_exit"]
-    label_row = np.array(label["radii"])
-    return feature_row, label_row
-
 def get_osm(int_sit):
     print 'Downloading OSM...'
     osm = get_osm_data(int_sit)
@@ -396,24 +401,40 @@ def get_intersection_geometry(int_sit, osm):
     return entry_way, exit_way, entry_line, exit_line, curve_secant, track_line
 
 def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track_line):
+    def convert_boolean(b):
+        if b: return 1.0
+        else: return -1.0
     features = copy.deepcopy(_features)
     features["intersection_angle"] = float(get_intersection_angle(entry_line, exit_line))
     features["maxspeed_entry"] = float(get_maxspeed(entry_way))
     features["maxspeed_exit"] = float(get_maxspeed(exit_way))
-    features["oneway_entry"] = get_oneway(entry_way)
-    features["oneway_exit"] = get_oneway(exit_way)
-    lane_distance_entry, lane_distance_exit = get_lane_distance(curve_secant, track_line)
-    features["lane_distance_entry"] = float(lane_distance_entry)
-    features["lane_distance_exit"] = float(lane_distance_exit)
-    # features["lane_distance_entry"] = float(get_lane_distance(entry_line, entry_line.length-INT_DIST, track_line))
-    # features["lane_distance_exit"] = float(get_lane_distance(exit_line, INT_DIST, track_line))
-    # features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
-    # features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
+    features["oneway_entry"] = convert_boolean(get_oneway(entry_way))
+    features["oneway_exit"] = convert_boolean(get_oneway(exit_way))
+    lane_distance_entry_exact, lane_distance_exit_exact = get_lane_distance_exact(curve_secant, track_line)
+    features["lane_distance_entry_exact"] = float(lane_distance_entry_exact)
+    features["lane_distance_exit_exact"] = float(lane_distance_exit_exact)
+    lane_distance_entry_lane_center, lane_distance_exit_lane_center = get_lane_distance_lane_center(entry_line, exit_line, curve_secant)
+    features["lane_distance_entry_lane_center"] = lane_distance_entry_lane_center
+    features["lane_distance_exit_lane_center"] = lane_distance_exit_lane_center
+    features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
+    features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
+    vehicle_speed_entry, vehicle_speed_exit = get_vehicle_speed(entry_line, exit_line, track_line)
+    features["vehicle_speed_entry"] = float(speed_entry)
+    features["vehicle_speed_exit"] = float(speed_exit)
     label = copy.deepcopy(_label)
     angles, radii = sample_line(curve_secant, track_line, features["intersection_angle"])
     label["angles"] = angles
     label["radii"] = radii
     return features, label
+
+def convert_to_array(features, label):
+    """Convert features to a number and put them in numpy array"""
+    label_len = len(label["angles"])
+    feature_row = np.zeros((1,len(features)))
+    for i, feature in enumerate(_feature_types):
+        feature_row[0][i] = features[feature]
+    label_row = np.array(label["radii"])
+    return feature_row, label_row
 
 if __name__ == "__main__":
     X = None
