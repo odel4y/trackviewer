@@ -330,11 +330,10 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
         ARROW_LENGTH = 5.0
         origin_p = center_line.interpolate(dist, normalized=normalized)
         normal_line = get_normal_to_line(center_line, dist, normalized=normalized)
-        outer_p = extended_interpolate(center_line, center_line.length - ARROW_LENGTH)
         half_arrow = extend_line(normal_line, ARROW_LENGTH - normal_line.length, direction="forward")
-        half_arrow = affinity.rotate(half_arrow, 45.0, origin=origin_p)
+        half_arrow = affinity.rotate(half_arrow, -30.0, origin=origin_p)
         plot_line(color, half_arrow)
-        half_arrow = affinity.rotate(half_arrow, 90.0, origin=origin_p)
+        half_arrow = affinity.rotate(half_arrow, -105.0, origin=origin_p)
         plot_line(color, half_arrow)
     def plot_arrows_along_line(color, center_line):
         MIN_DIST = 50.0
@@ -346,7 +345,8 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     fig = plt.figure()
     plt.hold(True)
     plt.axis('equal')
-    plot_line('k', entry_line, exit_line)
+    plot_line('g', entry_line)
+    plot_line('k', exit_line)
     plot_line('m', normal_en, normal_ex)
     plot_line('g', neg_normal_en, neg_normal_ex)
     plot_line('r', track_line)

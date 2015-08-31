@@ -55,7 +55,7 @@ def test_regressor(reg, X_test, y_test, test_files, plot):
             _, _, entry_line, exit_line, curve_secant, track_line = extract_features.get_intersection_geometry(int_sit, osm)
             intersection_angle = float(extract_features.get_intersection_angle(entry_line, exit_line))
             predicted_line = extract_features.get_predicted_line(curve_secant, y_pred[0], intersection_angle)
-            comparison_line = reference_implementations.get_geiger_line(entry_line, exit_line)
+            comparison_line = reference_implementations.get_interpolating_spline_line(entry_line, exit_line)
             extract_features.plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_line, comparison_line)
             fig = pyplot.figure()
             pyplot.hold(True)

@@ -8,7 +8,7 @@ from extract_features import extended_interpolate, get_normal_to_line
 from constants import LANE_WIDTH
 import automatic_test
 
-def parametric_combined_spline(x, y, k=3, resolution=100, kv=None):
+def parametric_combined_spline(x, y, k=3, resolution=100, kv=None, s=None):
     """Return a linear combination of parametric univariate splines through x, y evaluated at resolution"""
     x = np.array(x)
     y = np.array(y)
@@ -16,7 +16,7 @@ def parametric_combined_spline(x, y, k=3, resolution=100, kv=None):
     nt = np.linspace(0, 1, resolution)
 
     # Prepare linear combination of splines with given knot vector
-    tckp,u = scipy.interpolate.splprep([x,y],k=k,t=kv)
+    tckp,u = scipy.interpolate.splprep([x,y],k=(k or 3),t=kv,s=s)
     x2, y2 = scipy.interpolate.splev(np.linspace(0,1,400), tckp)
 
     return x2, y2
@@ -25,10 +25,10 @@ def get_geiger_line(entry_line, exit_line):
     # w = 2 * LANE_WIDTH
     w = 30.0
     center_p = exit_line.interpolate(0.)
-    far_entry_n =   get_normal_to_line(entry_line, entry_line.length - 70.0, direction="backward")
-    entry_n =       get_normal_to_line(entry_line, entry_line.length - w, direction="backward")
-    far_exit_n =    get_normal_to_line(exit_line, 70.0, direction="backward")
-    exit_n =        get_normal_to_line(exit_line, w, direction="backward")
+    far_entry_n =   get_normal_to_line(entry_line, entry_line.length - 70.0)
+    entry_n =       get_normal_to_line(entry_line, entry_line.length - w)
+    far_exit_n =    get_normal_to_line(exit_line, 70.0)
+    exit_n =        get_normal_to_line(exit_line, w)
     far_entry_p =   extended_interpolate(far_entry_n, LANE_WIDTH/2)
     entry_p =       extended_interpolate(entry_n, LANE_WIDTH/2)
     far_exit_p =    extended_interpolate(far_exit_n, LANE_WIDTH/2)
@@ -51,5 +51,28 @@ class GeigerAlgorithm(automatic_test.PredictionAlgorithm):
     def predict(self, test_sample):
         return get_geiger_line(test_sample['geometry']['entry_line'], test_sample['geometry']['exit_line'])
 
-def kuhnt_path():
-    pass
+def get_interpolating_spline_line(entry_line, exit_line):
+    w = LANE_WIDTH
+    far_entry_n =   get_normal_to_line(entry_line, entry_line.length - 70.0)
+    entry_n2 =      get_normal_to_line(entry_line, entry_line.length - 5.0)
+    entry_n =       get_normal_to_line(entry_line, entry_line.length - w)
+    exit_n =        get_normal_to_line(exit_line, w)
+    exit_n2 =       get_normal_to_line(entry_line, 5.0)
+    far_exit_n =    get_normal_to_line(exit_line, 70.0)
+    far_entry_p =   extended_interpolate(far_entry_n, LANE_WIDTH/2)
+    entry_p2 =      extended_interpolate(entry_n2, LANE_WIDTH/2) # Control point to ensure spline orientation with street
+    entry_p =       extended_interpolate(entry_n, LANE_WIDTH/2)
+    exit_p =        extended_interpolate(exit_n, LANE_WIDTH/2)
+    exit_p2 =       extended_interpolate(exit_n2, LANE_WIDTH/2)
+    far_exit_p =    extended_interpolate(far_exit_n, LANE_WIDTH/2)
+    coords = [  list(far_entry_p.coords)[0],
+                list(entry_p2.coords)[0],
+                list(entry_p.coords)[0],
+                list(exit_p.coords)[0],
+                list(exit_p2.coords)[0],
+                list(far_exit_p.coords)[0]]
+    x, y = zip(*coords)
+    # Make a parametric quadratic spline with given knot vector
+    x2, y2 = parametric_combined_spline(x, y, k=2, s=2.0)
+    interpolating_spline_line = LineString(zip(x2, y2))
+    return interpolating_spline_line

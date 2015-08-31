@@ -1,9 +1,9 @@
 #!/usr/bin/python
 #coding:utf-8
+from __future__ import division
 from abc import ABCMeta, abstractmethod
 from extract_features import get_intersection_angle, get_curve_secant_line, sample_line
 from sklearn.metrics import mean_squared_error
-from __future__ import division
 
 _test_sample = {
     'geometry': {
