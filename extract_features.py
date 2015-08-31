@@ -14,28 +14,22 @@ import pdb
 import matplotlib.pyplot as plt
 from constants import INT_DIST, ANGLE_RES, MAX_OSM_TRIES, LANE_WIDTH
 
-# Features
-# - Straßenwinkel zueinander
-# - Geschwindigkeitsbegrenzung am Eingang ausgang
-# - Fahrstreifenwahl am Eingang/Ausgang
-#   + Angegeben durch Abstand der Fahrstreifenmitte von Mittellinie der Straße in Openstreetmap
-# - Ist Eingang oder Ausgang Einbahnstraße?
 _feature_types = [
-    "intersection_angle",
-    "maxspeed_entry",
-    "maxspeed_exit",
-    "lane_distance_entry_exact",
-    "lane_distance_exit_exact",
-    "lane_distance_entry_lane_center",
-    "lane_distance_exit_lane_center",
-    "lane_distance_entry_projected_normal",
-    "lane_distance_exit_projected_normal",
-    "oneway_entry",
-    "oneway_exit",
-    "curvature_entry",
-    "curvature_exit",
-    "vehicle_speed_entry",
-    "vehicle_speed_exit"
+    "intersection_angle",                       # Angle between entry and exit way
+    "maxspeed_entry",                           # Allowed maximum speed on entry way
+    "maxspeed_exit",                            # Allowed maximum speed on exit way
+    "lane_distance_entry_exact",                # Distance of track line to curve secant center point at 0 degree angle
+    "lane_distance_exit_exact",                 # Distance of track line to curve secant center point at 180 degree angle
+    "lane_distance_entry_lane_center",          # Distance of lane center line to curve secant ceter point at 0 degree angle
+    "lane_distance_exit_lane_center",           # Distance of lane center line to curve secant ceter point at 180 degree angle
+    "lane_distance_entry_projected_normal",     # Distance of track line to entry way at INT_DIST projected along normal
+    "lane_distance_exit_projected_normal",      # Distance of track line to exit way at INT_DIST projected along normal
+    "oneway_entry",                             # Is entry way a oneway street?
+    "oneway_exit",                              # Is exit way a oneway street?
+    "curvature_entry",                          # Curvature of entry way over INT_DIST
+    "curvature_exit",                           # Curvature of exit way over INT_DIST
+    "vehicle_speed_entry",                      # Measured vehicle speed on entry way at INT_DIST
+    "vehicle_speed_exit"                        # Measured vehicle speed on exit way at INT_DIST
 ]
 _features = {name: None for name in _feature_types}
 
