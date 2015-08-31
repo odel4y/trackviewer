@@ -21,7 +21,7 @@ _test_sample = {
     }
 }
 
-class Algorithm(object):
+class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
     name = ''
 
