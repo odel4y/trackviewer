@@ -54,10 +54,10 @@ class GeigerAlgorithm(automatic_test.PredictionAlgorithm):
 def get_interpolating_spline_line(entry_line, exit_line):
     w = LANE_WIDTH
     far_entry_n =   get_normal_to_line(entry_line, entry_line.length - 70.0)
-    entry_n2 =      get_normal_to_line(entry_line, entry_line.length - 5.0)
+    entry_n2 =      get_normal_to_line(entry_line, entry_line.length - w - 0.1)
     entry_n =       get_normal_to_line(entry_line, entry_line.length - w)
     exit_n =        get_normal_to_line(exit_line, w)
-    exit_n2 =       get_normal_to_line(entry_line, 5.0)
+    exit_n2 =       get_normal_to_line(exit_line, w + 0.1)
     far_exit_n =    get_normal_to_line(exit_line, 70.0)
     far_entry_p =   extended_interpolate(far_entry_n, LANE_WIDTH/2)
     entry_p2 =      extended_interpolate(entry_n2, LANE_WIDTH/2) # Control point to ensure spline orientation with street
@@ -73,6 +73,6 @@ def get_interpolating_spline_line(entry_line, exit_line):
                 list(far_exit_p.coords)[0]]
     x, y = zip(*coords)
     # Make a parametric quadratic spline with given knot vector
-    x2, y2 = parametric_combined_spline(x, y, k=2, s=2.0)
+    x2, y2 = parametric_combined_spline(x, y, k=2, s=0.0)
     interpolating_spline_line = LineString(zip(x2, y2))
     return interpolating_spline_line
