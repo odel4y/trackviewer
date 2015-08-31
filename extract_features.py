@@ -27,7 +27,9 @@ _feature_types = [
     "lane_distance_entry_exact",
     "lane_distance_exit_exact",
     "lane_distance_entry_lane_center",
-    "lane_distance_exit_lane_center"
+    "lane_distance_exit_lane_center",
+    "lane_distance_entry_projected_normal",
+    "lane_distance_exit_projected_normal",
     "oneway_entry",
     "oneway_exit",
     "curvature_entry",
@@ -254,26 +256,26 @@ def get_lane_distance_lane_center(entry_line, exit_line, curve_secant):
     lane_distance_exit = find_closest_intersection(extended_secant_exit, origin_p, lane_center_exit_line)
     return lane_distance_entry, lane_distance_exit
 
-# def get_lane_distance_projected_normal(way_line, p_dist, track_line, normalized=False):
-#     """Get the distance of the track to the way projected along its normal at p_dist.
-#     The distance is positive for the right hand and negative for the left hand from the center line."""
-#     # Construct the normal and its negative counterpart to the line at p_dist
-#     normal, neg_normal = get_normal_to_line(way_line, p_dist, normalized=normalized)
-#     normal_p = extended_interpolate(way_line, p_dist, normalized=normalized)
-#     # Extend lines to be sure that they intersect with track line
-#     normal = extend_line(normal, 100.0, direction="forward")
-#     neg_normal = extend_line(neg_normal, 100.0, direction="forward")
-#     dist_n = find_closest_intersection(normal, normal_p, track_line)
-#     dist_nn = find_closest_intersection(neg_normal, normal_p, track_line)
-#     if dist_n != None and dist_nn != None:
-#         if dist_n <= dist_nn:
-#             return dist_n
-#         else:
-#             return -dist_nn
-#     if dist_n == dist_nn == None:
-#         raise Exception("No intersection of normals with track found")
-#     else:
-#         return dist_n or -dist_nn # Return the one that is not None
+def get_lane_distance_projected_normal(way_line, dist, track_line, normalized=False):
+    """Get the distance of the track to the way projected along its normal at dist.
+    The distance is positive for the right hand and negative for the left hand from the center line."""
+    # Construct the normal and its negative counterpart to the line at dist
+    normal, neg_normal = get_normal_to_line(way_line, dist, normalized=normalized, direction="both")
+    normal_p = extended_interpolate(way_line, dist, normalized=normalized)
+    # Extend lines to be sure that they intersect with track line
+    normal = extend_line(normal, 100.0, direction="forward")
+    neg_normal = extend_line(neg_normal, 100.0, direction="forward")
+    dist_n = find_closest_intersection(normal, normal_p, track_line)
+    dist_nn = find_closest_intersection(neg_normal, normal_p, track_line)
+    if dist_n != None and dist_nn != None:
+        if dist_n <= dist_nn:
+            return dist_n
+        else:
+            return -dist_nn
+    if dist_n == dist_nn == None:
+        raise Exception("No intersection of normals with track found")
+    else:
+        return dist_n or -dist_nn # Return the one that is not None
 
 def get_reversed_line(way_line):
     """Reverse the order of the coordinates in a LineString"""
@@ -416,6 +418,8 @@ def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_seca
     lane_distance_entry_lane_center, lane_distance_exit_lane_center = get_lane_distance_lane_center(entry_line, exit_line, curve_secant)
     features["lane_distance_entry_lane_center"] = lane_distance_entry_lane_center
     features["lane_distance_exit_lane_center"] = lane_distance_exit_lane_center
+    features["lane_distance_entry_projected_normal"] = float(get_lane_distance_projected_normal(entry_line, entry_line.length - INT_DIST, track_line))
+    features["lane_distance_exit_projected_normal"] = float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
     features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
     features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
     vehicle_speed_entry, vehicle_speed_exit = get_vehicle_speed(entry_line, exit_line, track_line)
