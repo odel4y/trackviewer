@@ -76,3 +76,10 @@ def get_interpolating_spline_line(entry_line, exit_line):
     x2, y2 = parametric_combined_spline(x, y, k=2, s=0.0)
     interpolating_spline_line = LineString(zip(x2, y2))
     return interpolating_spline_line
+
+class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
+    def __init__(self):
+        self.name = 'Standard Interpolating Spline (k=2)'
+
+    def predict(self, test_sample):
+        return get_interpolating_spline_line(test_sample['geometry']['entry_line'], test_sample['geometry']['exit_line'])
