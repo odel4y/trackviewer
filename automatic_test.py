@@ -8,17 +8,10 @@ from sklearn.metrics import mean_squared_error
 _test_sample = {
     'geometry': {
         'entry_line': None,
-        'exit_line': None
-    },
-    'tags': {
-        'maxspeed_entry': None,
-        'maxspeed_exit': None,
-        'oneway_entry': None,
-        'oneway_exit': None
-    },
-    'label': {
+        'exit_line': None,
         'track_line': None
-    }
+    },
+    'feature_row': None # Contains features of _feature_types in extract_features module
 }
 
 class PredictionAlgorithm(object):
@@ -41,7 +34,7 @@ def test(algorithms, test_samples):
         for test_samole in test_samples:
             entry_line = test_sample['geometry']['entry_line']
             exit_line = test_sample['geometry']['exit_line']
-            track_line = test_sample['label']['track_line']
+            track_line = test_sample['geometry']['track_line']
             intersection_angle = get_intersection_angle(entry_line, exit_line)
             curve_secant = get_curve_secant_line(entry_line, exit_line)
             y_true = sample_line(curve_secant, track_line, intersection_angle)
