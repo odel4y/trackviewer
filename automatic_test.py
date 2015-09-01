@@ -10,11 +10,11 @@ class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
     name = ''
 
-    @abstractmethod
-    def predict(self, samples):
+    def train(self, samples):
         pass
 
-    def train(self, samples):
+    @abstractmethod
+    def predict(self, samples):
         pass
 
     def get_name(self):
