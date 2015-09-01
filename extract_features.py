@@ -42,6 +42,7 @@ _sample = {
     'geometry': {
         'entry_line': None,
         'exit_line': None,
+        'curve_secant': None,
         'track_line': None
     },
     'X': None,                  # Feature vector
@@ -478,6 +479,7 @@ if __name__ == "__main__":
             feature_list, label_list = convert_to_array(features, label)
             sample['geometry']['entry_line'] = entry_line
             sample['geometry']['exit_line'] = exit_line
+            sample['geometry']['curve_secant'] = curve_secant
             sample['geometry']['track_line'] = track_line
             sample['X'] = feature_list
             sample['y'] = label_list
