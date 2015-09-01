@@ -164,11 +164,6 @@ def get_vehicle_speed(entry_line, exit_line, track_line):
     # FIXME: Implement
     return 0.0, 0.0
 
-def get_line_from_coords(coords):
-    """Constructs a LineString from coordinates"""
-    track_line = LineString(coords)
-    return track_line
-
 def extend_line(line, dist, direction="both"):
     """Extends a LineString on both ends for length dist"""
     start_c, end_c = [], []
@@ -393,14 +388,15 @@ def get_intersection_geometry(int_sit, osm):
     exit_way = get_element_by_id(osm, int_sit["exit_way"])
     entry_line, exit_line = get_way_lines(int_sit, osm)
     curve_secant = get_curve_secant_line(entry_line, exit_line)
-    track_line = get_line_from_coords([(x,y) for (x,y,_) in int_sit["track"]])
-    return entry_way, exit_way, entry_line, exit_line, curve_secant, track_line
+    track = int_sit["track"]
+    return entry_way, exit_way, entry_line, exit_line, curve_secant, track
 
-def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track_line):
+def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track):
     def convert_boolean(b):
         if b: return 1.0
         else: return -1.0
     features = copy.deepcopy(_features)
+    track_line = LineString([(x, y) for (x,y,_) in track])
     features["intersection_angle"] = float(get_intersection_angle(entry_line, exit_line))
     features["maxspeed_entry"] = float(get_maxspeed(entry_way))
     features["maxspeed_exit"] = float(get_maxspeed(exit_way))
@@ -416,7 +412,7 @@ def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_seca
     features["lane_distance_exit_projected_normal"] = float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
     features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
     features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
-    vehicle_speed_entry, vehicle_speed_exit = get_vehicle_speed(entry_line, exit_line, track_line)
+    vehicle_speed_entry, vehicle_speed_exit = get_vehicle_speed(entry_line, exit_line, track)
     features["vehicle_speed_entry"] = float(speed_entry)
     features["vehicle_speed_exit"] = float(speed_exit)
     label = copy.deepcopy(_label)
