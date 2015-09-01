@@ -13,6 +13,7 @@ import copy
 import pdb
 import matplotlib.pyplot as plt
 from constants import INT_DIST, ANGLE_RES, MAX_OSM_TRIES, LANE_WIDTH
+from datetime import datetime, timedelta
 
 _feature_types = [
     "intersection_angle",                       # Angle between entry and exit way
@@ -159,9 +160,31 @@ def get_oneway(way):
     else:
         return False
 
-def get_vehicle_speed(entry_line, exit_line, track_line):
-    # FIXME: Implement
-    return 0.0, 0.0
+def find_nearest_coord_index(line, ref_p):
+    """Returns the index of the least distant coordinate of a LineString line
+    to ref_p"""
+    min_dist = None
+    min_i = None
+    for i, (x,y) in enumerate(line.coords):
+        dist = ref_p.distance(Point(x,y))
+        if min_dist == None or dist < min_dist:
+            min_dist = dist
+            min_i = i
+    return min_i
+
+def get_vehicle_speed(way_line, dist, track):
+    """Returns the measured vehicle speed in km/h at dist of way_line
+    with distance INT_DIST from intersection center"""
+    track_line = LineString([(x,y) for (x,y,_) in track])
+    dist_p = extended_interpolate(way_line, dist)
+    normal = extend_line(get_normal_to_line(way_line, dist), 100.0, direction="both")
+    track_p = find_closest_intersection(normal, dist_p, track_line)
+    track_i = find_nearest_coord_index(track_line, track_p)
+    track_p2 = track_line.coords[track_i+5]
+    time_delta = track[track_i+5][2] - track[track_i][2]
+    time_sec_delta = time_delta.total_seconds()
+    dist = track_p.distance(track_p2)
+    return dist/time_sec_delta*3.6
 
 def extend_line(line, dist, direction="both"):
     """Extends a LineString on both ends for length dist"""
@@ -409,9 +432,10 @@ def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_seca
     features["lane_distance_exit_projected_normal"] = float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
     features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
     features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
-    vehicle_speed_entry, vehicle_speed_exit = get_vehicle_speed(entry_line, exit_line, track)
-    features["vehicle_speed_entry"] = float(speed_entry)
-    features["vehicle_speed_exit"] = float(speed_exit)
+    vehicle_speed_entry = get_vehicle_speed(entry_line, entry_line.length - INT_DIST, track)
+    vehicle_speed_exit = get_vehicle_speed(exit_line, INT_DIST, track)
+    features["vehicle_speed_entry"] = float(vehicle_speed_entry)
+    features["vehicle_speed_exit"] = float(vehicle_speed_exit)
     label = copy.deepcopy(_label)
     radii = sample_line(curve_secant, track_line, features["intersection_angle"])
     label["radii"] = radii
