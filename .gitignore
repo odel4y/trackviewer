@@ -4,7 +4,10 @@ __pycache__/
 *$py.class
 
 data/prepared_data
-
+data/models
+data/training_data
+other/
+*~
 *.glade~
 *.py~
 
