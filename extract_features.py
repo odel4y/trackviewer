@@ -34,7 +34,6 @@ _feature_types = [
 _features = {name: None for name in _feature_types}
 
 _label = {
-    "angles": None,
     "radii": None
 }
 
@@ -309,7 +308,6 @@ def sample_line(curve_secant, track_line, intersection_angle):
     half_curve_secant = LineString([origin,\
                                     curve_secant.interpolate(0.0, normalized=True)])
     extended_ruler = extend_line(half_curve_secant, 100.0, direction="forward")
-    angles = []
     radii = []
     angle_steps = np.linspace(0.0, np.pi, ANGLE_RES)
     for angle in np.nditer(angle_steps):
@@ -317,9 +315,8 @@ def sample_line(curve_secant, track_line, intersection_angle):
         rotated_ruler = affinity.rotate(extended_ruler, copysign(angle,intersection_angle), origin=origin, use_radians=True)
         r = find_closest_intersection(rotated_ruler, origin, track_line)
         if r == None: raise Exception("Sampling the track failed")
-        angles.append(float(angle))
         radii.append(float(r))
-    return angles, radii
+    return radii
 
 def get_predicted_line(curve_secant, radii_pred, intersection_angle):
     """Get a prediction for the track along the curve and convert it into a LineString"""
