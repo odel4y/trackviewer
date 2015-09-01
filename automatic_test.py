@@ -5,15 +5,6 @@ from abc import ABCMeta, abstractmethod
 from extract_features import get_intersection_angle, get_curve_secant_line, sample_line
 from sklearn.metrics import mean_squared_error
 
-_test_sample = {
-    'geometry': {
-        'entry_line': None,
-        'exit_line': None,
-        'track_line': None
-    },
-    'feature_row': None # Contains features of _feature_types in extract_features module
-}
-
 class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
     name = ''

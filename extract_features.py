@@ -38,6 +38,17 @@ _label = {
     "radii": None
 }
 
+_sample = {
+    'geometry': {
+        'entry_line': None,
+        'exit_line': None,
+        'track_line': None
+    },
+    'X': None,                  # Feature vector
+    'y': None,                  # Label vector
+    'pickled_filename': None    # Filename of prepared pickle file for later lookup
+}
+
 def get_osm_data(int_sit):
     tries = 0
     while tries < 3:
@@ -411,7 +422,7 @@ def get_intersection_geometry(int_sit, osm):
     track = int_sit["track"]
     return entry_way, exit_way, entry_line, exit_line, curve_secant, track
 
-def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track):
+def get_feature_dict(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track):
     def convert_boolean(b):
         if b: return 1.0
         else: return -1.0
@@ -442,39 +453,36 @@ def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_seca
     return features, label
 
 def convert_to_array(features, label):
-    """Convert features to a number and put them in numpy array"""
-    label_len = len(label["angles"])
-    feature_row = np.zeros((1,len(features)))
-    for i, feature in enumerate(_feature_types):
-        feature_row[0][i] = features[feature]
-    label_row = np.array(label["radii"])
-    return feature_row, label_row
+    """Convert features to a number and put them in a python list"""
+    feature_list = [features[feature_name] for feature_name in _feature_types]
+    label_list = label["radii"]
+    return feature_list, label_list
 
 if __name__ == "__main__":
-    X = None
-    y = None
-    pickled_files = []
+    samples = []
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
         fp, fne = os.path.split(fn)
         try:
             print 'Processing %s' % (fne)
+            sample = copy.deepcopy(_sample)
             with open(fn, 'r') as f:
                 int_sit = pickle.load(f)
             osm = get_osm(int_sit)
-            features, label = get_features(int_sit, *get_intersection_geometry(int_sit, osm))
+            entry_way, exit_way, entry_line, exit_line, curve_secant, track = get_intersection_geometry(int_sit, osm)
+            features, label = get_feature_dict(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track)
             # print features in readable format
             import json
             text = json.dumps(features, sort_keys=True, indent=4)
             print text
-            feature_row, label_row = convert_to_array(features, label)
-            if X == None and y == None:
-                X = feature_row
-                y = label_row
-            else:
-                X = np.vstack((X, feature_row))
-                y = np.vstack((y, label_row))
-            pickled_files.append(fn)
+            feature_list, label_list = convert_to_array(features, label)
+            sample['geometry']['entry_line'] = entry_line
+            sample['geometry']['exit_line'] = exit_line
+            sample['geometry']['track_line'] = track_line
+            sample['X'] = feature_list
+            sample['y'] = label_list
+            sample['pickled_filename'] = fn
+            samples.append(sample)
             # plot_intersection(entry_line, exit_line, curve_secant, track_line)
         except Exception as e:
             print '################'
@@ -485,4 +493,4 @@ if __name__ == "__main__":
             print '################'
     with open(os.path.join(fp, '..', 'training_data', 'samples.pickle'), 'wb') as f:
         print 'Writing database...'
-        pickle.dump((X,y,pickled_files), f)
+        pickle.dump(samples, f)
