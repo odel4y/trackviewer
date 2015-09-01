@@ -14,7 +14,7 @@ class PredictionAlgorithm(object):
         pass
 
     @abstractmethod
-    def predict(self, samples):
+    def predict(self, sample):
         pass
 
     def get_name(self):

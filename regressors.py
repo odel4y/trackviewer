@@ -16,10 +16,18 @@ class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
         self.features = features
 
     def train(self, samples):
-        pass
+        X, y = self.convert_samples_to_arrays(samples)
+        # TODO: Normalisieren aller Samples am Anfang
+        X = sklearn.preprocessing.normalize(X, axis=1, copy=False)
+        print 'Training regressor with %d samples...' % (len(X))
+        self.regressor = sklearn.ensemble.RandomForestRegressor()
+        self.regressor.fit(X, y)
 
     def predict(self, samples):
-        pass
+        X, _ = self.convert_samples_to_arrays(samples)
+        # TODO: Normalisieren aller Samples am Anfang
+        X = sklearn.preprocessing.normalize(X, axis=1, copy=False)
+        return self.regressor.predict(X)
 
     def convert_samples_to_arrays(self, samples):
         """Convert the samples to numpy arrays for training or testing while only

@@ -48,11 +48,11 @@ class GeigerAlgorithm(automatic_test.PredictionAlgorithm):
     def __init__(self):
         self.name = 'Quadratic B-Spline (Geiger 2014)'
 
-    def predict(self, test_sample):
-        predicted_line = get_geiger_line(test_sample['geometry']['entry_line'], test_sample['geometry']['exit_line'])
-        radii = sample_line(test_sample['geometry']['curve_secant'],
+    def predict(self, sample):
+        predicted_line = get_geiger_line(sample['geometry']['entry_line'], sample['geometry']['exit_line'])
+        radii = sample_line(sample['geometry']['curve_secant'],
                             predicted_line,
-                            test_sample['X'][_feature_types.index('intersection_angle')])
+                            sample['X'][_feature_types.index('intersection_angle')])
         return radii
 
 def get_interpolating_spline_line(entry_line, exit_line):
@@ -85,9 +85,9 @@ class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
     def __init__(self):
         self.name = 'Standard Interpolating Spline (k=2)'
 
-    def predict(self, test_sample):
-        predicted_line = get_interpolating_spline_line(test_sample['geometry']['entry_line'], test_sample['geometry']['exit_line'])
-        radii = sample_line(test_sample['geometry']['curve_secant'],
+    def predict(self, sample):
+        predicted_line = get_interpolating_spline_line(sample['geometry']['entry_line'], sample['geometry']['exit_line'])
+        radii = sample_line(sample['geometry']['curve_secant'],
                             predicted_line,
-                            test_sample['X'][_feature_types.index('intersection_angle')])
+                            sample['X'][_feature_types.index('intersection_angle')])
         return radii
