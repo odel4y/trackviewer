@@ -19,6 +19,10 @@ class PredictionAlgorithm(object):
     def get_name(self):
         return self.name
 
+def train(algorithms, train_samples):
+    for algo in algorithms:
+        algo.train(train_samples)
+
 def test(algorithms, test_samples):
     for algo in algorithms:
         cumulated_mse = 0.
