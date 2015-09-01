@@ -4,6 +4,7 @@ from __future__ import division
 from abc import ABCMeta, abstractmethod
 from extract_features import get_intersection_angle, get_curve_secant_line, sample_line, _feature_types
 from sklearn.metrics import mean_squared_error
+import random
 
 class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
@@ -18,6 +19,20 @@ class PredictionAlgorithm(object):
 
     def get_name(self):
         return self.name
+
+def get_partitioned_samples(samples, train_ratio):
+    """Randomize the given samples and partition them in train and test
+    samples using the train_ratio"""
+    sample_count = len(samples)
+    print 'Total number of samples:', sample_count
+    train_sample_count = int(round(sample_count * train_ratio))
+    indices = range(sample_count)
+    random.shuffle(indices)
+    train_indices = indices[:train_sample_count]
+    test_indices = indices[train_sample_count:]
+    train_samples = [samples[i] for i in train_indices]
+    test_samples = [samples[i] for i in test_samples]
+    return train_samples, test_samples
 
 def train(algorithms, train_samples):
     for algo in algorithms:
