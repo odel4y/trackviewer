@@ -413,8 +413,7 @@ def get_features(int_sit, entry_way, exit_way, entry_line, exit_line, curve_seca
     features["vehicle_speed_entry"] = float(speed_entry)
     features["vehicle_speed_exit"] = float(speed_exit)
     label = copy.deepcopy(_label)
-    angles, radii = sample_line(curve_secant, track_line, features["intersection_angle"])
-    label["angles"] = angles
+    radii = sample_line(curve_secant, track_line, features["intersection_angle"])
     label["radii"] = radii
     return features, label
 
