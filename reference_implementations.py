@@ -4,7 +4,7 @@ from __future__ import division
 import numpy as np
 import scipy.interpolate
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
-from extract_features import extended_interpolate, get_normal_to_line
+from extract_features import extended_interpolate, get_normal_to_line, sample_line, _feature_types
 from constants import LANE_WIDTH
 import automatic_test
 
@@ -49,7 +49,11 @@ class GeigerAlgorithm(automatic_test.PredictionAlgorithm):
         self.name = 'Quadratic B-Spline (Geiger 2014)'
 
     def predict(self, test_sample):
-        return get_geiger_line(test_sample['geometry']['entry_line'], test_sample['geometry']['exit_line'])
+        predicted_line = get_geiger_line(test_sample['geometry']['entry_line'], test_sample['geometry']['exit_line'])
+        radii = sample_line(test_sample['geometry']['curve_secant'],
+                            predicted_line,
+                            test_sample['X'][_feature_types.index('intersection_angle')])
+        return radii
 
 def get_interpolating_spline_line(entry_line, exit_line):
     w = LANE_WIDTH
@@ -82,4 +86,8 @@ class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
         self.name = 'Standard Interpolating Spline (k=2)'
 
     def predict(self, test_sample):
-        return get_interpolating_spline_line(test_sample['geometry']['entry_line'], test_sample['geometry']['exit_line'])
+        predicted_line = get_interpolating_spline_line(test_sample['geometry']['entry_line'], test_sample['geometry']['exit_line'])
+        radii = sample_line(test_sample['geometry']['curve_secant'],
+                            predicted_line,
+                            test_sample['X'][_feature_types.index('intersection_angle')])
+        return radii
