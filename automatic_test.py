@@ -2,8 +2,10 @@
 #coding:utf-8
 from __future__ import division
 from abc import ABCMeta, abstractmethod
-from extract_features import get_intersection_angle, get_curve_secant_line, sample_line, _feature_types
+from extract_features import get_intersection_angle, get_curve_secant_line,\
+    sample_line, _feature_types, get_matrices_from_samples, get_samples_from_matrices
 from sklearn.metrics import mean_squared_error
+import sklearn.preprocessing
 import random
 
 class PredictionAlgorithm(object):
@@ -19,6 +21,12 @@ class PredictionAlgorithm(object):
 
     def get_name(self):
         return self.name
+
+def normalize_features(samples):
+    """Normalize all the feature vectors in samples"""
+    X, y = get_matrices_from_samples(samples)
+    X = sklearn.preprocessing.normalize(X, axis=1, copy=False)
+    return get_samples_from_matrices(X, y, samples)
 
 def get_partitioned_samples(samples, train_ratio):
     """Randomize the given samples and partition them in train and test

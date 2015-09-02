@@ -457,7 +457,23 @@ def convert_to_array(features, label):
     """Convert features to a number and put them in a python list"""
     feature_list = [features[feature_name] for feature_name in _feature_types]
     label_list = label["radii"]
-    return feature_list, label_list
+    return np.array(feature_list), np.array(label_list)
+
+def get_matrices_from_samples(samples):
+    """Get feature and label matrices from samples list"""
+    X = np.zeros((len(samples),len(samples[0]['X'])))
+    y = np.zeros((len(samples),len(samples[0]['y'])))
+    for i, s in enumerate(samples):
+        X[i] = s['X']
+        y[i] = s['y']
+    return X, y
+
+def get_samples_from_matrices(X, y, samples):
+    """Update feature and label matrices in samples list"""
+    for i, s in enumerate(samples):
+        s['X'] = X[i]
+        s['y'] = y[i]
+    return samples
 
 if __name__ == "__main__":
     samples = []
@@ -476,7 +492,7 @@ if __name__ == "__main__":
             import json
             text = json.dumps(features, sort_keys=True, indent=4)
             print text
-            feature_list, label_list = convert_to_array(features, label)
+            feature_array, label_array = convert_to_array(features, label)
             sample['geometry']['entry_line'] = entry_line
             sample['geometry']['exit_line'] = exit_line
             sample['geometry']['curve_secant'] = curve_secant
