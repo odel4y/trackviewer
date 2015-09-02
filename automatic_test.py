@@ -7,6 +7,7 @@ from extract_features import get_intersection_angle, get_curve_secant_line,\
 from sklearn.metrics import mean_squared_error
 import sklearn.preprocessing
 import random
+import pickle
 
 class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
@@ -71,3 +72,8 @@ def test(algorithms, test_samples):
         print 'Average MSE:', average_mse
         print 'Minimum MSE:', min_mse
         print 'Maximum MSE:', max_mse
+
+def load_samples(fn):
+    with open(fn, 'r') as f:
+        samples = pickle.load(f)
+    return samples
