@@ -40,7 +40,7 @@ def get_partitioned_samples(samples, train_ratio):
     train_indices = indices[:train_sample_count]
     test_indices = indices[train_sample_count:]
     train_samples = [samples[i] for i in train_indices]
-    test_samples = [samples[i] for i in test_samples]
+    test_samples = [samples[i] for i in test_indices]
     return train_samples, test_samples
 
 def train(algorithms, train_samples):

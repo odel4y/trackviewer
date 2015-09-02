@@ -496,15 +496,15 @@ def get_matrices_from_samples(samples):
     X = np.zeros((len(samples),len(samples[0]['X'])))
     y = np.zeros((len(samples),len(samples[0]['y'])))
     for i, s in enumerate(samples):
-        X[i] = s['X']
-        y[i] = s['y']
+        X[i] = np.array(s['X'])
+        y[i] = np.array(s['y'])
     return X, y
 
 def get_samples_from_matrices(X, y, samples):
     """Update feature and label matrices in samples list"""
     for i, s in enumerate(samples):
-        s['X'] = X[i]
-        s['y'] = y[i]
+        s['X'] = np.array(X[i])
+        s['y'] = np.array(y[i])
     return samples
 
 if __name__ == "__main__":

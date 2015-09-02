@@ -22,12 +22,12 @@ class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
         self.regressor = sklearn.ensemble.RandomForestRegressor()
         self.regressor.fit(X, y)
 
-    def predict(self, samples):
-        X, _ = extract_features.get_matrices_from_samples(samples)
+    def predict(self, sample):
+        X, _ = extract_features.get_matrices_from_samples([sample])
         X = self.filter_feature_matrix(X, self.features)
-        return self.regressor.predict(X)
+        return self.regressor.predict(X)[0]
 
     def filter_feature_matrix(self, X, features):
         feature_indices = [extract_features._feature_types.index(f) for f in features]
-        X_new = X[:][feature_indices]
-        return X_new.transpose()
+        X_new = X[:,feature_indices]
+        return X_new
