@@ -50,6 +50,15 @@ _sample = {
     'pickled_filename': None    # Filename of prepared pickle file for later lookup
 }
 
+class SampleError(Exception):
+    pass
+
+class MaxspeedMissingError(Exception):
+    pass
+
+class NoIntersectionError(Exception):
+    pass
+
 def get_osm_data(int_sit):
     tries = 0
     while tries < 3:
@@ -154,16 +163,17 @@ def get_maxspeed(way):
         return float(way["tags"]["maxspeed"])
     else:
         # If no tag maxspeed is found try to guess it
+        way_name = way["tags"]["name"]
+        way_name = way_name.encode('ascii', 'ignore')
         if way["tags"]["highway"] in ["primary", "secondary"]:
             # It is a larger street so 50km/h as maxspeed is assumable
-            print 'Assuming maxspeed 50km/h for %s (ID: %d) (highway=%s)' % (way["tags"]["name"], way["id"], way["tags"]["highway"])
+            print 'Assuming maxspeed 50km/h for %s (ID: %d) (highway=%s)' % (way_name, way["id"], way["tags"]["highway"])
             return 50.0
         elif way["tags"]["highway"] in ["residential"]:
-            print 'Assuming maxspeed 30km/h for %s (ID: %d) (highway=%s)' % (way["tags"]["name"], way["id"], way["tags"]["highway"])
+            print 'Assuming maxspeed 30km/h for %s (ID: %d) (highway=%s)' % (way_name, way["id"], way["tags"]["highway"])
             return 30.0
         else:
-            print 'No maxspeed could be found for %s (ID: %d)' % (way["tags"]["name"], way["id"])
-            return None
+            raise MaxspeedMissingError(u"No maxspeed could be found for %s (ID: %d)" % (way_name, way["id"]))
 
 def get_oneway(way):
     """Determine whether way is a oneway street"""
@@ -191,12 +201,22 @@ def get_vehicle_speed(way_line, dist, track):
     dist_p = extended_interpolate(way_line, dist)
     normal = extend_line(get_normal_to_line(way_line, dist), 100.0, direction="both")
     track_p = find_closest_intersection(normal, dist_p, track_line)
+    if track_p == None:
+        print "Could not find a track point normal to lane for speed measurement. Taking the closest one"
+        # Just take the start or end point instead
+        track_p = track_line.interpolate(track_line.project(dist_p))
     track_i = find_nearest_coord_index(track_line, track_p)
-    track_p2 = track_line.coords[track_i+5]
-    time_delta = track[track_i+5][2] - track[track_i][2]
+    if track_i < len(track_line.coords)-1-5:
+        track_i2 = track_i+5
+    else:
+        # If track_p is last point in track_line take a point before that instead
+        track_i2 = track_i-5
+    track_p2 = Point(track_line.coords[track_i2])
+    time_delta = track[track_i2][2] - track[track_i][2]
     time_sec_delta = time_delta.total_seconds()
+    dist = track_line.project(Point(track_line.coords[track_i])) - track_line.project(track_p2)
     dist = track_p.distance(track_p2)
-    return dist/time_sec_delta*3.6
+    return abs(dist/time_sec_delta*3.6)
 
 def extend_line(line, dist, direction="both"):
     """Extends a LineString on both ends for length dist"""
@@ -242,12 +262,11 @@ def find_closest_intersection(line, line_p, track_line):
     find the closest intersection if there are more than one"""
     intsec = line.intersection(track_line)
     if type(intsec) == Point:
-        return line_p.distance(intsec)
+        return intsec
     elif type(intsec) == MultiPoint:
-        distances = []
-        for p in intsec:
-            distances.append(line_p.distance(p))
-        return min(distances)
+        distances = [line_p.distance(p) for p in intsec]
+        min_index = distances.index(min(distances))
+        return intsec[min_index]
     elif type(intsec) == GeometryCollection and len(intsec) <= 0:
         return None
     else: raise Exception("No valid intersection type")
@@ -260,23 +279,27 @@ def get_lane_distance_exact(curve_secant, track_line):
     secant_end_p = curve_secant.interpolate(1.0, normalized=True)
     extended_secant_entry = extend_line(LineString([origin_p, secant_start_p]), 100.0, direction="forward")
     extended_secant_exit = extend_line(LineString([origin_p, secant_end_p]), 100.0, direction="forward")
-    lane_distance_entry = find_closest_intersection(extended_secant_entry, origin_p, track_line)
-    lane_distance_exit = find_closest_intersection(extended_secant_exit, origin_p, track_line)
+    track_entry_p = find_closest_intersection(extended_secant_entry, origin_p, track_line)
+    lane_distance_entry = origin_p.distance(track_entry_p)
+    track_exit_p = find_closest_intersection(extended_secant_exit, origin_p, track_line)
+    lane_distance_exit = origin_p.distance(track_exit_p)
     return lane_distance_entry, lane_distance_exit
 
 def get_lane_distance_lane_center(entry_line, exit_line, curve_secant):
     """Get the distance of the lane center currently driven on to the centre point
     """
     # Find center of lanes and extend the lines to be sure to intersect with curve secant
-    lane_center_entry_line = extend_line(entry_line.parallel_offset(LANE_WIDTH/2), 100.0, direction="backward")
-    lane_center_exit_line = extend_line(exit_line.parallel_offset(LANE_WIDTH/2), 100.0, direction="forward")
+    lane_center_entry_line = extend_line(entry_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="backward")
+    lane_center_exit_line = extend_line(exit_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="forward")
     origin_p = curve_secant.interpolate(0.5, normalized=True)
     secant_start_p = curve_secant.interpolate(0.0, normalized=True)
     secant_end_p = curve_secant.interpolate(1.0, normalized=True)
     extended_secant_entry = extend_line(LineString([origin_p, secant_start_p]), 100.0, direction="forward")
     extended_secant_exit = extend_line(LineString([origin_p, secant_end_p]), 100.0, direction="forward")
-    lane_distance_entry = find_closest_intersection(extended_secant_entry, origin_p, lane_center_entry_line)
-    lane_distance_exit = find_closest_intersection(extended_secant_exit, origin_p, lane_center_exit_line)
+    lane_entry_p = find_closest_intersection(extended_secant_entry, origin_p, lane_center_entry_line)
+    lane_distance_entry = origin_p.distance(lane_entry_p)
+    lane_exit_p = find_closest_intersection(extended_secant_exit, origin_p, lane_center_exit_line)
+    lane_distance_exit = origin_p.distance(lane_exit_p)
     return lane_distance_entry, lane_distance_exit
 
 def get_lane_distance_projected_normal(way_line, dist, track_line, normalized=False):
@@ -288,15 +311,23 @@ def get_lane_distance_projected_normal(way_line, dist, track_line, normalized=Fa
     # Extend lines to be sure that they intersect with track line
     normal = extend_line(normal, 100.0, direction="forward")
     neg_normal = extend_line(neg_normal, 100.0, direction="forward")
-    dist_n = find_closest_intersection(normal, normal_p, track_line)
-    dist_nn = find_closest_intersection(neg_normal, normal_p, track_line)
+    pos_normal_p = find_closest_intersection(normal, normal_p, track_line)
+    if pos_normal_p != None:
+        dist_n = normal_p.distance(pos_normal_p)
+    else:
+        dist_n = None
+    neg_normal_p = find_closest_intersection(neg_normal, normal_p, track_line)
+    if neg_normal_p != None:
+        dist_nn = normal_p.distance(neg_normal_p)
+    else:
+        dist_nn = None
     if dist_n != None and dist_nn != None:
         if dist_n <= dist_nn:
             return dist_n
         else:
             return -dist_nn
     if dist_n == dist_nn == None:
-        raise Exception("No intersection of normals with track found")
+        raise NoIntersectionError("No intersection of normals with track found")
     else:
         return dist_n or -dist_nn # Return the one that is not None
 
@@ -348,8 +379,9 @@ def sample_line(curve_secant, track_line, intersection_angle):
     for angle in np.nditer(angle_steps):
         # depending on whether it is a right or a left turn the ruler has to rotate in different directions
         rotated_ruler = affinity.rotate(extended_ruler, copysign(angle,intersection_angle), origin=origin, use_radians=True)
-        r = find_closest_intersection(rotated_ruler, origin, track_line)
-        if r == None: raise Exception("Sampling the track failed")
+        r_p = find_closest_intersection(rotated_ruler, origin, track_line)
+        if r_p == None: raise SampleError("Sampling the track failed")
+        r = origin.distance(r_p)
         radii.append(float(r))
     return radii
 
@@ -488,6 +520,7 @@ if __name__ == "__main__":
             osm = get_osm(int_sit)
             entry_way, exit_way, entry_line, exit_line, curve_secant, track = get_intersection_geometry(int_sit, osm)
             features, label = get_feature_dict(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track)
+            track_line = LineString([(x, y) for (x,y,_) in track])
             # print features in readable format
             import json
             text = json.dumps(features, sort_keys=True, indent=4)
@@ -497,12 +530,12 @@ if __name__ == "__main__":
             sample['geometry']['exit_line'] = exit_line
             sample['geometry']['curve_secant'] = curve_secant
             sample['geometry']['track_line'] = track_line
-            sample['X'] = feature_list
-            sample['y'] = label_list
+            sample['X'] = feature_array
+            sample['y'] = label_array
             sample['pickled_filename'] = fn
             samples.append(sample)
             # plot_intersection(entry_line, exit_line, curve_secant, track_line)
-        except Exception as e:
+        except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError) as e:
             print '################'
             print '################'
             print e
