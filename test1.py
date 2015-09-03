@@ -3,6 +3,7 @@
 # Simple test with RandomForestRegressor and Automatic Testing
 import automatic_test
 import regressors
+import reference_implementations
 
 samples = automatic_test.load_samples('data/training_data/samples.pickle')
 samples = automatic_test.normalize_features(samples)
@@ -19,5 +20,7 @@ feature_list = [
     "vehicle_speed_exit"                        # Measured vehicle speed on exit way at INT_DIST
 ]
 rf_algo = regressors.RandomForestAlgorithm(feature_list)
-automatic_test.train([rf_algo], train_samples)
-automatic_test.test([rf_algo], test_samples)
+ispline_algo = reference_implementations.InterpolatingSplineAlgorithm()
+algos = [rf_algo, ispline_algo]
+automatic_test.train(algos, train_samples)
+automatic_test.test(algos, test_samples)
