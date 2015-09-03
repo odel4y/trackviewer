@@ -367,6 +367,11 @@ def get_normal_to_line(line, dist, normalized=False, direction="forward"):
     else:
         raise NotImplementedError('The option direction="%s" is not implemented.' % direction)
 
+def get_offset_point_at_distance(line, dist, parallel_offset):
+    """Get a point normal to line at a parallel_offset to the point on line at dist"""
+    normal = get_normal_to_line(line, dist)
+    return extended_interpolate(normal, parallel_offset)
+
 def sample_line(curve_secant, track_line, intersection_angle):
     """Sample the line's distance to the centroid of the curve_secant at constant angle steps.
     Returns polar coordinates"""
