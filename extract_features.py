@@ -289,16 +289,16 @@ def get_lane_distance_lane_center(entry_line, exit_line, curve_secant):
     """Get the distance of the lane center currently driven on to the centre point
     """
     # Find center of lanes and extend the lines to be sure to intersect with curve secant
-    lane_center_entry_line = extend_line(entry_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="backward")
-    lane_center_exit_line = extend_line(exit_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="forward")
+    lane_center_line_entry = extend_line(entry_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="backward")
+    lane_center_line_exit = extend_line(exit_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="forward")
     origin_p = curve_secant.interpolate(0.5, normalized=True)
     secant_start_p = curve_secant.interpolate(0.0, normalized=True)
     secant_end_p = curve_secant.interpolate(1.0, normalized=True)
     extended_secant_entry = extend_line(LineString([origin_p, secant_start_p]), 100.0, direction="forward")
     extended_secant_exit = extend_line(LineString([origin_p, secant_end_p]), 100.0, direction="forward")
-    lane_entry_p = find_closest_intersection(extended_secant_entry, origin_p, lane_center_entry_line)
+    lane_entry_p = find_closest_intersection(extended_secant_entry, origin_p, lane_center_line_entry)
     lane_distance_entry = origin_p.distance(lane_entry_p)
-    lane_exit_p = find_closest_intersection(extended_secant_exit, origin_p, lane_center_exit_line)
+    lane_exit_p = find_closest_intersection(extended_secant_exit, origin_p, lane_center_line_exit)
     lane_distance_exit = origin_p.distance(lane_exit_p)
     return lane_distance_entry, lane_distance_exit
 

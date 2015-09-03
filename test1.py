@@ -5,9 +5,6 @@ import automatic_test
 import regressors
 import reference_implementations
 
-samples = automatic_test.load_samples('data/training_data/samples.pickle')
-samples = automatic_test.normalize_features(samples)
-train_samples, test_samples = automatic_test.get_partitioned_samples(samples, 0.8)
 feature_list = [
     "intersection_angle",                       # Angle between entry and exit way
     "maxspeed_entry",                           # Allowed maximum speed on entry way
@@ -22,5 +19,8 @@ feature_list = [
 rf_algo = regressors.RandomForestAlgorithm(feature_list)
 ispline_algo = reference_implementations.InterpolatingSplineAlgorithm()
 algos = [rf_algo, ispline_algo]
+samples = automatic_test.load_samples('data/training_data/samples.pickle')
+samples = automatic_test.normalize_features(samples)
+train_samples, test_samples = automatic_test.get_partitioned_samples(samples, 0.8)
 automatic_test.train(algos, train_samples)
 automatic_test.test(algos, test_samples)
