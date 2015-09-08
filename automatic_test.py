@@ -73,6 +73,12 @@ def test(algorithms, test_samples):
         print 'Minimum MSE:', min_mse
         print 'Maximum MSE:', max_mse
 
+def test_plot(algorithms, test_samples):
+    for sample in test_samples:
+        for algo in algorithms:
+            y_pred = algo.predict(sample)
+            
+
 def load_samples(fn):
     with open(fn, 'r') as f:
         samples = pickle.load(f)
