@@ -3,7 +3,8 @@
 from __future__ import division
 from abc import ABCMeta, abstractmethod
 from extract_features import get_intersection_angle, get_curve_secant_line,\
-    sample_line, _feature_types, get_matrices_from_samples, get_samples_from_matrices
+    sample_line, _feature_types, get_matrices_from_samples, get_samples_from_matrices,\
+    get_predicted_line, plot_intersection, _feature_types
 from sklearn.metrics import mean_squared_error
 import sklearn.preprocessing
 import random
@@ -74,10 +75,13 @@ def test(algorithms, test_samples):
         print 'Maximum MSE:', max_mse
 
 def test_plot(algorithms, test_samples):
-    for sample in test_samples:
+    for s in test_samples:
+        predicted_lines = []
         for algo in algorithms:
-            y_pred = algo.predict(sample)
-            
+            y_pred = algo.predict(s)
+            predicted_lines.append(get_predicted_line(s['geometry']['curve_secant'], y_pred, s['X'][_feature_types.index('intersection_angle')]))
+        plot_intersection(s['geometry']['entry_line'], s['geometry']['exit_line'],\
+                        s['geometry']['curve_secant'], s['geometry']['track_line'], predicted_lines)
 
 def load_samples(fn):
     with open(fn, 'r') as f:
