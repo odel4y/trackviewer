@@ -26,7 +26,12 @@ def plot_label_heatmap(samples, bars_y = 30):
             dest_j = j
             dest_i = round((radii[i,j] - min_y) / (max_y - min_y) * bars_y)-1
             heatmap_array[dest_i, dest_j] += 1
-    heatmap_frame = pandas.DataFrame(data=heatmap_array)
+    indices = np.linspace(min_y, max_y, bars_y)
+    indices = ["%.1f" % i for i in indices]
+    columns = np.linspace(0., 180., len(angles))
+    columns = ["%.1f" % i for i in columns]
+    heatmap_array = np.flipud(heatmap_array)
+    heatmap_frame = pandas.DataFrame(data=heatmap_array, index=reversed(indices), columns=columns)
     f = sns.heatmap(heatmap_frame)
     sns.plt.show(f)
 
