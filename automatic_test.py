@@ -79,7 +79,8 @@ def test_plot(algorithms, test_samples):
         predicted_lines = []
         for algo in algorithms:
             y_pred = algo.predict(s)
-            predicted_lines.append(get_predicted_line(s['geometry']['curve_secant'], y_pred, s['X'][_feature_types.index('intersection_angle')]))
+            predicted_lines.append(get_predicted_line(s['geometry']['curve_secant'], y_pred,\
+                        s['X'][_feature_types.index('intersection_angle')]))
         plot_intersection(s['geometry']['entry_line'], s['geometry']['exit_line'],\
                         s['geometry']['curve_secant'], s['geometry']['track_line'], predicted_lines)
 

@@ -405,11 +405,16 @@ def get_predicted_line(curve_secant, radii_pred, intersection_angle):
     return LineString(points)
 
 def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_lines=[]):
-    def plot_line(color='b', *line):
-        for l in line:
+    def plot_line(color, *lines):
+        if color == None:
+            cmap = plt.get_cmap('Set1')
+            color = [cmap(i) for i in np.linspace(0, 1, len(lines))]
+        elif type(color) != list:
+            color = [color] * len(lines)
+        for l,c in zip(lines, color):
             coords = list(l.coords)
             x,y = zip(*coords)
-            plt.plot(x,y, color=color, linestyle='-')
+            plt.plot(x,y, color=c, linestyle='-')
     def plot_arrow(color, center_line, dist, normalized=False):
         ARROW_LENGTH = 5.0
         origin_p = center_line.interpolate(dist, normalized=normalized)
@@ -434,11 +439,7 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     plot_line('g', neg_normal_en, neg_normal_ex)
     plot_line('r', track_line)
     plot_arrows_along_line('r', track_line)
-    if predicted_lines:
-        cmap = plt.get_cmap('YlGnBu')
-        colors = [cmap(i) for i in np.linspace(0, 1, len(predicted_lines))]
-        for l, c in zip(predicted_lines, colors):
-            plot_line(c, l)
+    if predicted_lines: plot_line(None, *predicted_lines)
     plot_line('k', curve_secant)
     plt.show(block=True)
 
