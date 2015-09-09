@@ -33,6 +33,9 @@ def plot_label_heatmap(samples, bars_y = 30):
     heatmap_array = np.flipud(heatmap_array)
     heatmap_frame = pandas.DataFrame(data=heatmap_array, index=reversed(indices), columns=columns)
     f = sns.heatmap(heatmap_frame)
+    plt.subplots_adjust(top=0.9)
+    plt.title("Labels Heatmap")
+    sns.axlabel("Angle", "Radius")
     sns.plt.show(f)
 
 def plot_histogram(array, bins, title, block=True):
