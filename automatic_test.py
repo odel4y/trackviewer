@@ -49,6 +49,7 @@ def train(algorithms, train_samples):
         algo.train(train_samples)
 
 def test(algorithms, test_samples):
+    results = {}
     for algo in algorithms:
         cumulated_mse = 0.
         average_mse = 0.
@@ -73,6 +74,11 @@ def test(algorithms, test_samples):
         print 'Average MSE:', average_mse
         print 'Minimum MSE:', min_mse
         print 'Maximum MSE:', max_mse
+        results[algo] = {   'cumulated_mse': cumulated_mse,
+                            'average_mse': average_mse,
+                            'min_mse': min_mse,
+                            'max_mse': max_mse}
+    return results
 
 def test_plot(algorithms, test_samples):
     for s in test_samples:
