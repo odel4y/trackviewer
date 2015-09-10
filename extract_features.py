@@ -35,6 +35,7 @@ _feature_types = [
     "bicycle_designated_exit",                  # Is there a designated bicycle way in the exit street?
     "lane_count_entry",                         # Total number of lanes in entry way
     "lane_count_exit"                           # Total number of lanes in exit way
+    "has_right_of_way"                          # Does the vehicle have right of way at the intersection?
 ]
 _features = {name: None for name in _feature_types}
 
@@ -200,6 +201,9 @@ def get_lane_count(way):
         return way["tags"]["lanes"]
     else:
         return 2
+
+def get_has_right_of_way():
+    pass
 
 def find_nearest_coord_index(line, ref_p):
     """Returns the index of the least distant coordinate of a LineString line
