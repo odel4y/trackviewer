@@ -34,7 +34,7 @@ _feature_types = [
     "bicycle_designated_entry",                 # Is there a designated bicycle way in the entry street?
     "bicycle_designated_exit",                  # Is there a designated bicycle way in the exit street?
     "lane_count_entry",                         # Total number of lanes in entry way
-    "lane_count_exit"                           # Total number of lanes in exit way
+    "lane_count_exit",                          # Total number of lanes in exit way
     "has_right_of_way"                          # Does the vehicle have right of way at the intersection?
 ]
 _features = {name: None for name in _feature_types}
