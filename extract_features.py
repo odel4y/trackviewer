@@ -200,7 +200,12 @@ def get_lane_count(way):
     if "lanes" in way["tags"]:
         return way["tags"]["lanes"]
     else:
-        return 2
+        if get_oneway(way):
+            print "Guessing 1 lane -> oneway"
+            return 1
+        else:
+            print "Guessing 2 lanes"
+            return 2
 
 def get_has_right_of_way():
     pass
