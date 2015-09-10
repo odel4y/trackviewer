@@ -30,7 +30,11 @@ _feature_types = [
     "curvature_entry",                          # Curvature of entry way over INT_DIST
     "curvature_exit",                           # Curvature of exit way over INT_DIST
     "vehicle_speed_entry",                      # Measured vehicle speed on entry way at INT_DIST
-    "vehicle_speed_exit"                        # Measured vehicle speed on exit way at INT_DIST
+    "vehicle_speed_exit",                       # Measured vehicle speed on exit way at INT_DIST
+    "bicycle_designated_entry",                 # Is there a designated bicycle way in the entry street?
+    "bicycle_designated_exit",                  # Is there a designated bicycle way in the exit street?
+    "lane_count_entry",                         # Total number of lanes in entry way
+    "lane_count_exit"                           # Total number of lanes in exit way
 ]
 _features = {name: None for name in _feature_types}
 
@@ -181,6 +185,21 @@ def get_oneway(way):
         return way["tags"]["oneway"] == "yes"
     else:
         return False
+
+def get_bicycle_designated(way):
+    """Determine whether way has a designated bycicle path"""
+    if "bicycle" in way["tags"]:
+        return way["tags"]["bicycle"] == "designated"
+    else:
+        return False
+
+def get_lane_count(way):
+    """Get total number of lanes on this way. Default is 2"""
+    # TODO: Does not support lanes:forward/backward tag
+    if "lanes" in way["tags"]:
+        return way["tags"]["lanes"]
+    else:
+        return 2
 
 def find_nearest_coord_index(line, ref_p):
     """Returns the index of the least distant coordinate of a LineString line
@@ -408,7 +427,7 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     def plot_line(color, *lines):
         if color == None:
             cmap = plt.get_cmap('Set1')
-            color = [cmap(i) for i in np.linspace(0, 1, len(lines))]
+            color = [cmap(i) for i in np.linspace(.2, 1, len(lines))]
         elif type(color) != list:
             color = [color] * len(lines)
         for l,c in zip(lines, color):
@@ -470,25 +489,29 @@ def get_feature_dict(int_sit, entry_way, exit_way, entry_line, exit_line, curve_
         else: return -1.0
     features = copy.deepcopy(_features)
     track_line = LineString([(x, y) for (x,y,_) in track])
-    features["intersection_angle"] = float(get_intersection_angle(entry_line, exit_line))
-    features["maxspeed_entry"] = float(get_maxspeed(entry_way))
-    features["maxspeed_exit"] = float(get_maxspeed(exit_way))
-    features["oneway_entry"] = convert_boolean(get_oneway(entry_way))
-    features["oneway_exit"] = convert_boolean(get_oneway(exit_way))
+    features["intersection_angle"] =                    float(get_intersection_angle(entry_line, exit_line))
+    features["maxspeed_entry"] =                        float(get_maxspeed(entry_way))
+    features["maxspeed_exit"] =                         float(get_maxspeed(exit_way))
+    features["oneway_entry"] =                          convert_boolean(get_oneway(entry_way))
+    features["oneway_exit"] =                           convert_boolean(get_oneway(exit_way))
     lane_distance_entry_exact, lane_distance_exit_exact = get_lane_distance_exact(curve_secant, track_line)
-    features["lane_distance_entry_exact"] = float(lane_distance_entry_exact)
-    features["lane_distance_exit_exact"] = float(lane_distance_exit_exact)
+    features["lane_distance_entry_exact"] =             float(lane_distance_entry_exact)
+    features["lane_distance_exit_exact"] =              float(lane_distance_exit_exact)
     lane_distance_entry_lane_center, lane_distance_exit_lane_center = get_lane_distance_lane_center(entry_line, exit_line, curve_secant)
-    features["lane_distance_entry_lane_center"] = lane_distance_entry_lane_center
-    features["lane_distance_exit_lane_center"] = lane_distance_exit_lane_center
-    features["lane_distance_entry_projected_normal"] = float(get_lane_distance_projected_normal(entry_line, entry_line.length - INT_DIST, track_line))
-    features["lane_distance_exit_projected_normal"] = float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
-    features["curvature_entry"] = float(get_line_curvature(get_reversed_line(entry_line)))
-    features["curvature_exit"] = float(get_line_curvature(get_reversed_line(exit_line)))
+    features["lane_distance_entry_lane_center"] =       lane_distance_entry_lane_center
+    features["lane_distance_exit_lane_center"] =        lane_distance_exit_lane_center
+    features["lane_distance_entry_projected_normal"] =  float(get_lane_distance_projected_normal(entry_line, entry_line.length - INT_DIST, track_line))
+    features["lane_distance_exit_projected_normal"] =   float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
+    features["curvature_entry"] =                       float(get_line_curvature(get_reversed_line(entry_line)))
+    features["curvature_exit"] =                        float(get_line_curvature(get_reversed_line(exit_line)))
     vehicle_speed_entry = get_vehicle_speed(entry_line, entry_line.length - INT_DIST, track)
     vehicle_speed_exit = get_vehicle_speed(exit_line, INT_DIST, track)
-    features["vehicle_speed_entry"] = float(vehicle_speed_entry)
-    features["vehicle_speed_exit"] = float(vehicle_speed_exit)
+    features["vehicle_speed_entry"] =                   float(vehicle_speed_entry)
+    features["vehicle_speed_exit"] =                    float(vehicle_speed_exit)
+    features["bicycle_designated_entry"] =              convert_boolean(get_bicycle_designated(entry_way))
+    features["bicycle_designated_exit"] =               convert_boolean(get_bicycle_designated(exit_way))
+    features["lane_count_entry"] =                      float(get_lane_count(entry_way))
+    features["lane_count_exit"] =                       float(get_lane_count(exit_way))
     label = copy.deepcopy(_label)
     radii = sample_line(curve_secant, track_line, features["intersection_angle"])
     label["radii"] = radii
