@@ -46,7 +46,7 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     fig = plt.figure()
     plt.hold(True)
     plt.axis('equal')
-    plot_line('k', entry_line, exit_line)
+    plot_lines('k', entry_line, exit_line)
     # plot_line('m', normal_en, normal_ex)
     # plot_line('g', neg_normal_en, neg_normal_ex)
     plot_line('k', curve_secant)

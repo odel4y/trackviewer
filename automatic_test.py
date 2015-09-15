@@ -99,14 +99,14 @@ def show_result_plot(results, test_samples, which_algorithms="all", which_sample
         for algo in which_algorithms:
             best_case_index = results[algo]['mse'].index(min(results[algo]['mse']))
             try:
-                plot_cases[best_case_index] += "| Best case for " + algo.get_name()
+                plot_cases[best_case_index] += " | Best case for " + algo.get_name()
             except:
                 plot_cases[best_case_index] = "Best case for " + algo.get_name()
     if which_samples in ["worst-case", "best-worst-case"]:
         for algo in which_algorithms:
             worst_case_index = results[algo]['mse'].index(max(results[algo]['mse']))
             try:
-                plot_cases[worst_case_index] += "| Worst case for " + algo.get_name()
+                plot_cases[worst_case_index] += " | Worst case for " + algo.get_name()
             except:
                 plot_cases[worst_case_index] = "Worst case for " + algo.get_name()
     for plot_index, plot_title in plot_cases.iteritems():
