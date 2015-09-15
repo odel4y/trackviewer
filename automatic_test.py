@@ -15,6 +15,7 @@ from plot_helper import plot_intersection
 class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
     name = ''
+    description = ''
 
     def train(self, samples):
         pass
@@ -25,6 +26,9 @@ class PredictionAlgorithm(object):
 
     def get_name(self):
         return self.name
+
+    def get_description(self):
+        return self.description
 
 def normalize_features(samples):
     """Normalize all the feature vectors in samples"""
@@ -102,9 +106,9 @@ def show_result_plot(results, test_samples, which_algorithms="all", which_sample
         for algo in which_algorithms:
             worst_case_index = results[algo]['mse'].index(max(results[algo]['mse']))
             try:
-                plot_cases[worst_case_index] += "| Worst case for" + algo.get_name()
+                plot_cases[worst_case_index] += "| Worst case for " + algo.get_name()
             except:
-                plot_cases[worst_case_index] = "Worst case for" + algo.get_name()
+                plot_cases[worst_case_index] = "Worst case for " + algo.get_name()
     for plot_index, plot_title in plot_cases.iteritems():
         predicted_lines = []
         labels = []

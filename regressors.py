@@ -18,7 +18,7 @@ class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
         for f in features:
             if f not in extract_features._feature_types:
                 raise NotImplementedError("Random Forest Algorithm: Feature %s is not available" % f)
-        self.name = self.name + '\nRegarded Features:\n- ' + '\n- '.join(features)
+        self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
         self.features = features
 
     def train(self, samples):
