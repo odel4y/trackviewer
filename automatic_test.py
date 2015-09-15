@@ -185,26 +185,29 @@ def test_plot(algorithms, test_samples):
                         s['geometry']['curve_secant'], s['geometry']['track_line'], predicted_lines)
 
 def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, features, min_num_features=4, cross_validation=False):
-    # Build feature sets
-    feature_sets = []
+    feature_sets = []               # Contains all the possible combinations of features with a minimum number of them
     results = []
-    rating_arg = 'average_mse'
+    rating_arg = 'average_mse'      # The argument to be used as a comparison score
     feature_quality_dicts = []
     if not cross_validation:
         train_sample_sets = [train_sample_sets]
         test_sample_sets = [test_sample_sets]
+    # Build the possible feature combinations
     for num_features in range(min_num_features, len(features)):
         it = itertools.combinations(features, num_features)
         it_list = list(it)
         feature_sets.extend(it_list)
+    # When cross validating iterate over the different sample sets
     for train_samples, test_samples in zip(train_sample_sets, test_sample_sets):
         print "Testing %d different feature sets" % len(feature_sets)
+        # Test all the feature combinations with the given algorithm
         for i, f_set in enumerate(feature_sets):
             algo = algo_class(f_set)
             train([algo], train_samples)
-            result = test([algo], test_samples, console=False)
-            print "Algorithm %d/%d has quality: %.2f" % (i+1, len(feature_sets), result[algo][rating_arg])
-            results.extend(result.items())
+            result = predict([algo], test_samples)
+            rs = get_result_statistics(result)
+            print "Algorithm %d/%d has quality: %.2f" % (i+1, len(feature_sets), rs[algo][rating_arg])
+            results.append((algo, rs[algo]))
         feature_occurences = {}
         for res in results:
             features = res[0].features

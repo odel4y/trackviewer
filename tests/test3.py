@@ -1,6 +1,8 @@
 #!/usr/bin/python
 #coding:utf-8
 # Systematic test of feature quality with RandomForestRegressor
+import sys
+sys.path.append('../')
 import automatic_test
 import regressors
 import reference_implementations
@@ -18,7 +20,7 @@ feature_list = [
     "vehicle_speed_entry",                      # Measured vehicle speed on entry way at INT_DIST
     "vehicle_speed_exit"                        # Measured vehicle speed on exit way at INT_DIST
 ]
-samples = automatic_test.load_samples('data/training_data/samples.pickle')
+samples = automatic_test.load_samples('../data/training_data/samples.pickle')
 samples = automatic_test.normalize_features(samples)
 train_sample_sets, test_sample_sets = automatic_test.get_cross_validation_samples(samples, 0.7, 5)
 automatic_test.test_feature_permutations(
