@@ -11,7 +11,6 @@ from math import copysign
 import numpy as np
 import copy
 import pdb
-import matplotlib.pyplot as plt
 from constants import INT_DIST, ANGLE_RES, MAX_OSM_TRIES, LANE_WIDTH
 from datetime import datetime, timedelta
 
@@ -432,51 +431,6 @@ def get_predicted_line(curve_secant, radii_pred, intersection_angle):
         points.append(p)
     return LineString(points)
 
-def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_lines=[]):
-    def plot_line(color, *lines):
-        if color == None:
-            cmap = plt.get_cmap('Set1')
-            color = [cmap(i) for i in np.linspace(.2, 1, len(lines))]
-        elif type(color) != list:
-            color = [color] * len(lines)
-        for l,c in zip(lines, color):
-            coords = list(l.coords)
-            x,y = zip(*coords)
-            plt.plot(x,y, color=c, linestyle='-')
-    def plot_arrow(color, center_line, dist, normalized=False):
-        ARROW_LENGTH = 5.0
-        origin_p = center_line.interpolate(dist, normalized=normalized)
-        normal_line = get_normal_to_line(center_line, dist, normalized=normalized)
-        half_arrow = extend_line(normal_line, ARROW_LENGTH - normal_line.length, direction="forward")
-        half_arrow = affinity.rotate(half_arrow, -30.0, origin=origin_p)
-        plot_line(color, half_arrow)
-        half_arrow = affinity.rotate(half_arrow, -105.0, origin=origin_p)
-        plot_line(color, half_arrow)
-    def plot_arrows_along_line(color, center_line):
-        MIN_DIST = 50.0
-        arrow_count = int(center_line.length / MIN_DIST)
-        for i in range(1, arrow_count + 1):
-            plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
-    normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
-    normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
-    fig = plt.figure()
-    plt.hold(True)
-    plt.axis('equal')
-    plot_line('k', entry_line, exit_line)
-    plot_line('m', normal_en, normal_ex)
-    plot_line('g', neg_normal_en, neg_normal_ex)
-    plot_line('r', track_line)
-    plot_arrows_along_line('r', track_line)
-    if predicted_lines: plot_line(None, *predicted_lines)
-    plot_line('k', curve_secant)
-    plt.show(block=True)
-
-def plot_sampled_track(label):
-    fig = plt.figure()
-    plt.hold(True)
-    plt.plot(label["angles"],label["radii"],'b.-')
-    plt.show()
-
 def get_osm(int_sit):
     print 'Downloading OSM...'
     osm = get_osm_data(int_sit)
@@ -575,7 +529,6 @@ if __name__ == "__main__":
             sample['y'] = label_array
             sample['pickled_filename'] = fn
             samples.append(sample)
-            # plot_intersection(entry_line, exit_line, curve_secant, track_line)
         except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError) as e:
             print '################'
             print '################'

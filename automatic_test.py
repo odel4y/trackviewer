@@ -4,12 +4,13 @@ from __future__ import division
 from abc import ABCMeta, abstractmethod
 from extract_features import get_intersection_angle, get_curve_secant_line,\
     sample_line, _feature_types, get_matrices_from_samples, get_samples_from_matrices,\
-    get_predicted_line, plot_intersection, _feature_types
+    get_predicted_line, _feature_types
 from sklearn.metrics import mean_squared_error
 import sklearn.preprocessing
 import random
 import pickle
 import itertools
+from plot_helper import plot_intersection
 
 class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
@@ -68,7 +69,79 @@ def train(algorithms, train_samples):
     for algo in algorithms:
         algo.train(train_samples)
 
-def test(algorithms, test_samples, console=True):
+def predict(algorithms, test_samples):
+    results = {}
+    for algo in algorithms:
+        # Initialize result structure
+        results[algo] = {
+                            'mse': [],
+                            'predictions': []
+                        }
+        for s in test_samples:
+            y_true = s['y']
+            y_pred = algo.predict(s)
+            mse = mean_squared_error(y_true, y_pred)
+            results[algo]['predictions'].append(y_pred)
+            results[algo]['mse'].append(mse)
+    return results
+
+def show_result_plot(results, test_samples, which_algorithms="all", which_samples="all"):
+    if which_algorithms == "all":
+        which_algorithms = results.keys()
+    plot_cases = {} # Contains the indices of the samples to be plotted and a plot title
+    if which_samples == "all":
+        plot_cases = {i:"Sample %d/%d" % (i, len(test_samples)) for i in range(len(test_samples))}
+    if which_samples in ["best-case", "best-worst-case"]:
+        for algo in which_algorithms:
+            best_case_index = results[algo]['mse'].index(min(results[algo]['mse']))
+            try:
+                plot_cases[best_case_index] += "| Best case for " + algo.get_name()
+            except:
+                plot_cases[best_case_index] = "Best case for " + algo.get_name()
+    if which_samples in ["worst-case", "best-worst-case"]:
+        for algo in which_algorithms:
+            worst_case_index = results[algo]['mse'].index(max(results[algo]['mse']))
+            try:
+                plot_cases[worst_case_index] += "| Worst case for" + algo.get_name()
+            except:
+                plot_cases[worst_case_index] = "Worst case for" + algo.get_name()
+    for plot_index, plot_title in plot_cases.iteritems():
+        predicted_lines = []
+        labels = []
+        s = test_samples[plot_index]
+        for algo in which_algorithms:
+            line = get_predicted_line(  s['geometry']['curve_secant'],\
+                                        results[algo]['predictions'][plot_index],\
+                                        s['X'][_feature_types.index('intersection_angle')])
+            predicted_lines.append(line)
+            labels.append(algo.get_name())
+        plot_intersection(  s['geometry']['entry_line'], s['geometry']['exit_line'],\
+                            s['geometry']['curve_secant'], s['geometry']['track_line'],\
+                            predicted_lines, labels, title)
+
+def get_result_statistics(results):
+    """Return different statistic measures for the given results"""
+    result_statistics = {}
+    for algo, result in results.iteritems():
+        result_statistics[algo] =   {
+                                        'cumulated_mse': sum(result['mse']),
+                                        'average_mse': sum(result['mse']) / len(result['mse']),
+                                        'min_mse': min(result['mse']),
+                                        'max_mse': max(result['mse'])
+                                    }
+    return result_statistics
+
+def output_formatted_result(results, output="console"):
+    result_statistics = get_result_statistics(results)
+    for algo, rs in result_statistics.iteritems():
+        if output == "console":
+            print 'Test with algorithm:', algo.get_name()
+            print 'Cumulated MSE:', rs['cumulated_mse']
+            print 'Average MSE:', rs['average_mse']
+            print 'Minimum MSE:', rs['min_mse']
+            print 'Maximum MSE:', rs['max_mse']
+
+def test(algorithms, test_samples, output="console"):
     results = {}
     for algo in algorithms:
         cumulated_mse = 0.
@@ -89,7 +162,7 @@ def test(algorithms, test_samples, console=True):
                 max_mse = max(max_mse, mse)
             else:
                 max_mse = mse
-        if console:
+        if output == "console":
             print 'Test with algorithm:', algo.get_name()
             print 'Cumulated MSE:', cumulated_mse
             print 'Average MSE:', average_mse
@@ -132,9 +205,6 @@ def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, f
             result = test([algo], test_samples, console=False)
             print "Algorithm %d/%d has quality: %.2f" % (i+1, len(feature_sets), result[algo][rating_arg])
             results.extend(result.items())
-        # # Find Algorithms with best performance
-        # results = sorted(results, key=lambda r: r[1][rating_arg])
-        # Calculate feature importance
         feature_occurences = {}
         for res in results:
             features = res[0].features
@@ -152,10 +222,6 @@ def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, f
         f_scores = [res[f] for res in feature_quality_dicts]
         total_feature_quality[f] = sum(f_scores)/len(f_scores)
     sorted_feature_importance = sorted(total_feature_quality.items(), key=lambda it: it[1])
-    # print "====== RESULTS ======"
-    # for i in range(10):
-    #     print "====== #%d Algorithm: %.2f ======" % (i+1, results[i][1][rating_arg])
-    #     print '- ' + '\n- '.join(results[i][0].features)
     print "====== FEATURE QUALITY ======"
     for i, (f, score) in enumerate(sorted_feature_importance):
         print "#%d %s: %.2f" % (i+1, f, score)
