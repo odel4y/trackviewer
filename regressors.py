@@ -45,15 +45,31 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
     def train(self, samples):
         X, y = extract_features.get_matrices_from_samples(samples)
         X = filter_feature_matrix(X, self.features)
-        y = self.continuous_to_bin(y)
         print 'Training classifier with %d samples...' % (len(X))
+        self.angle_steps = np.linspace(0.,180.,np.shape(y)[1])
+        steps = len(self.angle_steps)
+        X_new = np.zeros((np.shape(X)[0]*steps, np.shape(X)[1]+1))
+        # Introduce the angle as new feature
+        for i, angle in enumerate(self.angle_steps):
+            X_new[i*steps:(i+1)*steps, :-1] = np.tile(X[i], (steps, 1))
+            X_new[i*steps:(i+1)*steps, -1] = self.angle_steps
+        X = X_new
+        y = np.ravel(y)
         self.classifier.fit(X, y)
 
     def predict(self, sample):
         X, _ = extract_features.get_matrices_from_samples([sample])
         X = filter_feature_matrix(X, self.features)
-        y_pred = self.classifier.predict(X)[0]
+        X = np.tile(X, (len(self.angle_steps), 1))
+        X = np.column_stack((X, self.angle_steps))
+        y_pred = np.ravel(self.classifier.predict(X))
         return self.bin_to_continuous(y_pred)
+
+    def predict_proba_raw(self, sample):
+        X, _ = extract_features.get_matrices_from_samples([sample])
+        X = filter_feature_matrix(X, self.features)
+        y_pred = self.classifier.predict_proba(X)[0]
+        return y_pred
 
     def continuous_to_bin(self, v):
         return np.floor((v - self.min_radius) / (self.max_radius - self.min_radius) * self.bin_num)
