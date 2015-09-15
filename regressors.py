@@ -69,6 +69,7 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
         X, _ = extract_features.get_matrices_from_samples([sample])
         X = filter_feature_matrix(X, self.features)
         y_pred = self.classifier.predict_proba(X)[0]
+        print y_pred
         return y_pred
 
     def continuous_to_bin(self, v):
