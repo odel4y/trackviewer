@@ -117,7 +117,7 @@ def show_result_plot(results, test_samples, which_algorithms="all", which_sample
             labels.append(algo.get_name())
         plot_intersection(  s['geometry']['entry_line'], s['geometry']['exit_line'],\
                             s['geometry']['curve_secant'], s['geometry']['track_line'],\
-                            predicted_lines, labels, title)
+                            predicted_lines, labels, plot_title)
 
 def get_result_statistics(results):
     """Return different statistic measures for the given results"""

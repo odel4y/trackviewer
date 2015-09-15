@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from extract_features import get_normal_to_line, extend_line
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
+from shapely import affinity
 
 def get_distributed_colors(number, colormap='Set1'):
     cmap = plt.get_cmap('Set1')
@@ -13,7 +14,7 @@ def get_distributed_colors(number, colormap='Set1'):
 def plot_line(color, line, label=None):
     coords = list(line.coords)
     x,y = zip(*coords)
-    handle = plt.plot(x,y, color=c, linestyle='-', label=label)
+    handle, = plt.plot(x,y, color=color, linestyle='-', label=label)
     return handle
 
 def plot_lines(color, *lines):
@@ -55,6 +56,7 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     for line, color, label in zip(predicted_lines, colors, labels):
         handles.append( plot_line(color, line, label) )
     plt.legend(handles=handles)
+    if title: plt.title(title)
     plt.show(block=block)
 
 def plot_sampled_track(label):

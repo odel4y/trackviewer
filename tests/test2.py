@@ -1,6 +1,8 @@
 #!/usr/bin/python
 #coding:utf-8
 # Simple test with RandomForestRegressor and RandomForestClassifier
+import sys
+sys.path.append('../')
 import automatic_test
 import regressors
 import reference_implementations
@@ -22,9 +24,9 @@ rf_algo = regressors.RandomForestAlgorithm(feature_list)
 rfc_algo = regressors.RFClassificationAlgorithm(feature_list, bin_num=20, min_radius=6.0, max_radius=28.0)
 #ispline_algo = reference_implementations.InterpolatingSplineAlgorithm()
 algos = [rf_algo, rfc_algo]
-samples = automatic_test.load_samples('data/training_data/samples.pickle')
+samples = automatic_test.load_samples('../data/training_data/samples.pickle')
 samples = automatic_test.normalize_features(samples)
 train_samples, test_samples = automatic_test.get_partitioned_samples(samples, 0.8)
 automatic_test.train(algos, train_samples)
-automatic_test.test(algos, test_samples)
-automatic_test.test_plot(algos, test_samples)
+results = automatic_test.predict(algos, test_samples)
+automatic_test.show_result_plot(results, test_samples, which_samples="best-worst-case")
