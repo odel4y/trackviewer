@@ -38,8 +38,6 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
         self.name = 'Random Forest Classifier (Scikit)'
         self.features = features
         self.bin_num = bin_num
-        self.min_radius = min_radius
-        self.max_radius = max_radius
         self.classifier = sklearn.ensemble.RandomForestClassifier()
 
     def train(self, samples):
@@ -54,9 +52,9 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
             X_new[i*steps:(i+1)*steps, :-1] = np.tile(X[i], (steps, 1))
             X_new[i*steps:(i+1)*steps, -1] = self.angle_steps
         X = X_new
+        self.min_radius = np.amin(y)
+        self.max_radius = np.amax(y)
         y = self.continuous_to_bin(np.ravel(y))
-        print np.shape(X_new)
-        print set(np.ravel(y))
         self.classifier.fit(X, y)
 
     def predict(self, sample):
