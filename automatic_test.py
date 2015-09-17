@@ -191,49 +191,6 @@ def output_formatted_result(results, output="console"):
             print 'Minimum MSE:', rs['min_mse']
             print 'Maximum MSE:', rs['max_mse']
 
-def test(algorithms, test_samples, output="console"):
-    results = {}
-    for algo in algorithms:
-        cumulated_mse = 0.
-        average_mse = 0.
-        min_mse = None
-        max_mse = None
-        for test_sample in test_samples:
-            y_true = test_sample['y']
-            y_pred = algo.predict(test_sample)
-            mse = mean_squared_error(y_true, y_pred)
-            cumulated_mse += mse
-            average_mse += mse/len(test_samples)
-            if min_mse != None:
-                min_mse = min(min_mse, mse)
-            else:
-                min_mse = mse
-            if max_mse != None:
-                max_mse = max(max_mse, mse)
-            else:
-                max_mse = mse
-        if output == "console":
-            print 'Test with algorithm:', algo.get_name()
-            print 'Cumulated MSE:', cumulated_mse
-            print 'Average MSE:', average_mse
-            print 'Minimum MSE:', min_mse
-            print 'Maximum MSE:', max_mse
-        results[algo] = {   'cumulated_mse': cumulated_mse,
-                            'average_mse': average_mse,
-                            'min_mse': min_mse,
-                            'max_mse': max_mse}
-    return results
-
-def test_plot(algorithms, test_samples):
-    for s in test_samples:
-        predicted_lines = []
-        for algo in algorithms:
-            y_pred = algo.predict(s)
-            predicted_lines.append(get_predicted_line(s['geometry']['curve_secant'], y_pred,\
-                        s['X'][_feature_types.index('intersection_angle')]))
-        plot_intersection(s['geometry']['entry_line'], s['geometry']['exit_line'],\
-                        s['geometry']['curve_secant'], s['geometry']['track_line'], predicted_lines)
-
 def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, features, min_num_features=4, cross_validation=False):
     feature_sets = []               # Contains all the possible combinations of features with a minimum number of them
     results = []
