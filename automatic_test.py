@@ -10,7 +10,7 @@ import sklearn.preprocessing
 import random
 import pickle
 import itertools
-from plot_helper import plot_intersection
+from plot_helper import plot_intersection, plot_graph
 
 class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
@@ -74,6 +74,7 @@ def train(algorithms, train_samples):
         algo.train(train_samples)
 
 def predict(algorithms, test_samples):
+    """Get a prediction for a trajectory from each algorithm"""
     results = {}
     for algo in algorithms:
         # Initialize result structure
@@ -89,7 +90,20 @@ def predict(algorithms, test_samples):
             results[algo]['mse'].append(mse)
     return results
 
-def show_result_plot(results, test_samples, which_algorithms="all", which_samples="all"):
+def predict_proba(algorithms, test_samples):
+    """Predict probabilistic maps for algorithms that support this"""
+    results_proba = {}
+    for algo in algorithms:
+        # Initialize result structure
+        results[algo] = {
+                            'predictions_proba': []
+                        }
+        for s in test_samples:
+            y_pred = algo.predict_proba_raw(s)
+            results_proba[algo]['predictions_proba'].append(y_pred)
+    return results_proba
+
+def show_intersection_plot(results, test_samples, which_algorithms="all", which_samples="all"):
     if which_algorithms == "all":
         which_algorithms = results.keys()
     plot_cases = {} # Contains the indices of the samples to be plotted and a plot title
@@ -122,6 +136,38 @@ def show_result_plot(results, test_samples, which_algorithms="all", which_sample
         plot_intersection(  s['geometry']['entry_line'], s['geometry']['exit_line'],\
                             s['geometry']['curve_secant'], s['geometry']['track_line'],\
                             predicted_lines, labels, plot_title)
+
+def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):
+    if which_algorithms == "all":
+        which_algorithms = results.keys()
+    plot_cases = {} # Contains the indices of the samples to be plotted and a plot title
+    if which_samples == "all":
+        plot_cases = {i:"Sample %d/%d" % (i, len(test_samples)) for i in range(len(test_samples))}
+    if which_samples in ["best-case", "best-worst-case"]:
+        for algo in which_algorithms:
+            best_case_index = results[algo]['mse'].index(min(results[algo]['mse']))
+            try:
+                plot_cases[best_case_index] += " | Best case for " + algo.get_name()
+            except:
+                plot_cases[best_case_index] = "Best case for " + algo.get_name()
+    if which_samples in ["worst-case", "best-worst-case"]:
+        for algo in which_algorithms:
+            worst_case_index = results[algo]['mse'].index(max(results[algo]['mse']))
+            try:
+                plot_cases[worst_case_index] += " | Worst case for " + algo.get_name()
+            except:
+                plot_cases[worst_case_index] = "Worst case for " + algo.get_name()
+    for plot_index, plot_title in plot_cases.iteritems():
+        track_coords = test_samples[plot_index]['y']
+        predicted_coords = []
+        labels = []
+        s = test_samples[plot_index]
+        predicted_proba_map = []
+        for algo in which_algorithms:
+            predicted_coords.append(results[algo]['predictions'][plot_index])
+            labels.append(algo.get_name())
+            predicted_proba_map.append(results_proba[algo]['predictions_proba'][plot_index])
+        plot_graph(track_coords, predicted_coords, probabilistic_maps)
 
 def get_result_statistics(results):
     """Return different statistic measures for the given results"""

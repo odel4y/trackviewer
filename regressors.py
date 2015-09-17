@@ -66,9 +66,12 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
         return self.bin_to_continuous(y_pred)
 
     def predict_proba_raw(self, sample):
+        """Return the raw output of predicting the probability for each class"""
         X, _ = extract_features.get_matrices_from_samples([sample])
         X = filter_feature_matrix(X, self.features)
-        y_pred = self.classifier.predict_proba(X)[0]
+        X = np.tile(X, (len(self.angle_steps), 1))
+        X = np.column_stack((X, self.angle_steps))
+        y_pred = self.classifier.predict_proba(X)
         print y_pred
         return y_pred
 

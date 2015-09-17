@@ -39,7 +39,10 @@ def plot_arrows_along_line(color, center_line):
     for i in range(1, arrow_count + 1):
         plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
 
-def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_lines=[], labels=[], title=None, block=True):
+def plot_probability_map(probability_map):
+    pass
+
+def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_lines=[], labels=[], title=None, block=True, probability_map=None):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     handles = []
@@ -58,6 +61,9 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     plt.legend(handles=handles)
     if title: plt.title(title)
     plt.show(block=block)
+
+def plot_graph(track_coords, predicted_coords, probabilistic_maps):
+    pass
 
 def plot_sampled_track(label):
     fig = plt.figure()
