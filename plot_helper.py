@@ -3,6 +3,8 @@
 from __future__ import division
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import seaborn as sns
+import pandas
 import numpy as np
 from extract_features import get_normal_to_line, extend_line
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
@@ -64,26 +66,13 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
 def plot_probability_heatmap(predicted_proba):
     prediction =    predicted_proba['predictions_proba']
     print np.shape(prediction)
-    bin_num =       predicted_proba['bin_num']
+    bin_num =       np.shape(prediction)[1]
     max_radius =    predicted_proba['max_radius']
     min_radius =    predicted_proba['min_radius']
-    angle_steps = np.linspace(0., 180., len(prediction))
-    rect_width = angle_steps[1] - angle_steps[0]
-    rect_height = (max_radius - min_radius) / bin_num
-    ax = plt.gca()
-    cmap = plt.get_cmap('Oranges')
-    for angle_i, angle_row in enumerate(prediction):
-        for prob_i, prob in enumerate(angle_row):
-            ax.add_patch(
-                patches.Rectangle(
-                    (angle_i * rect_width, prob_i * rect_height), # X, Y
-                    rect_width,             # width
-                    rect_height,            # height
-                    facecolor=cmap(prob),   # fill color
-                    edgecolor="none"
-                )
-            )
-    print "Done"
+    angle_steps =   np.linspace(0., 180., len(prediction))
+    radius_steps =  np.linspace(min_radius, max_radius, bin_num)
+    heatmap_frame = pandas.DataFrame(data=np.transpose(prediction), index=radius_steps, columns=angle_steps)
+    sns.heatmap(heatmap_frame, xticklabels=False, yticklabels=False)
 
 def plot_graph(track_coords, predicted_coords, predicted_proba, labels=[]):
     angle_steps = np.linspace(0., 180., len(track_coords))
