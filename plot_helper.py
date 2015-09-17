@@ -15,10 +15,14 @@ def get_distributed_colors(number, colormap='Set1'):
     colors = [cmap(i) for i in np.linspace(0., 1., number)]
     return colors
 
+def plot_coords(x, y, color, label=None):
+    handle, = plt.plot(x,y, color=color, linestyle='-', label=label)
+    return handle
+
 def plot_line(color, line, label=None):
     coords = list(line.coords)
     x,y = zip(*coords)
-    handle, = plt.plot(x,y, color=color, linestyle='-', label=label)
+    handle = plot_coords(x, y, color, label=label)
     return handle
 
 def plot_lines(color, *lines):
@@ -64,23 +68,31 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     plt.show(block=block)
 
 def plot_probability_heatmap(predicted_proba):
-    prediction =    predicted_proba['predictions_proba']
+    prediction =    np.rot90(predicted_proba['predictions_proba'])
     print np.shape(prediction)
-    bin_num =       np.shape(prediction)[1]
+    bin_num =       np.shape(prediction)[0]
     max_radius =    predicted_proba['max_radius']
     min_radius =    predicted_proba['min_radius']
-    angle_steps =   np.linspace(0., 180., len(prediction))
-    radius_steps =  np.linspace(min_radius, max_radius, bin_num)
-    heatmap_frame = pandas.DataFrame(data=np.transpose(prediction), index=radius_steps, columns=angle_steps)
-    sns.heatmap(heatmap_frame, xticklabels=False, yticklabels=False)
+    angle_steps =   np.linspace(0., 180., np.shape(prediction)[1])
+    radius_steps =  np.linspace(max_radius, min_radius, bin_num)
+    # heatmap_frame = pandas.DataFrame(data=prediction, index=radius_steps, columns=angle_steps)
+    heatmap_frame = pandas.DataFrame(data=prediction)
+    ax = sns.heatmap(heatmap_frame, xticklabels=False, yticklabels=False)
+    return ax
 
-def plot_graph(track_coords, predicted_coords, predicted_proba, labels=[]):
-    angle_steps = np.linspace(0., 180., len(track_coords))
+def plot_graph(track_radii, predicted_radii, predicted_proba, labels=[]):
+    angle_steps = np.linspace(0., 180., len(track_radii))
     handles = []
     fig = plt.figure()
     plt.hold(True)
+    ax = plt.gca()
     for proba_map in predicted_proba:
         plot_probability_heatmap(proba_map)
+    colors = get_distributed_colors(len(predicted_radii))
+    handles.append( plot_coords(angle_steps, track_radii, "red", "Measured Track") )
+    for radii, color, label in zip(predicted_radii, colors, labels):
+        handles.append( plot_coords(angle_steps, radii, color, label) )
+    plt.legend(handles=handles)
     plt.show()
 
 def plot_sampled_track(label):
