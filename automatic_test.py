@@ -95,15 +95,22 @@ def predict_proba(algorithms, test_samples):
     results_proba = {}
     for algo in algorithms:
         # Initialize result structure
-        results[algo] = {
-                            'predictions_proba': []
+        results_proba[algo] = {
+                            'predictions_proba': [],
+                            'bin_num': 0,
+                            'min_radius': 0.,
+                            'max_radius': 0.
                         }
         for s in test_samples:
             y_pred = algo.predict_proba_raw(s)
             results_proba[algo]['predictions_proba'].append(y_pred)
+            results_proba[algo]['bin_num'] = algo.bin_num
+            results_proba[algo]['min_radius'] = algo.min_radius
+            results_proba[algo]['max_radius'] = algo.max_radius
     return results_proba
 
 def show_intersection_plot(results, test_samples, which_algorithms="all", which_samples="all"):
+    print "Show intersection plot..."
     if which_algorithms == "all":
         which_algorithms = results.keys()
     plot_cases = {} # Contains the indices of the samples to be plotted and a plot title
@@ -138,6 +145,7 @@ def show_intersection_plot(results, test_samples, which_algorithms="all", which_
                             predicted_lines, labels, plot_title)
 
 def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):
+    print "Show graph plot..."
     if which_algorithms == "all":
         which_algorithms = results.keys()
     plot_cases = {} # Contains the indices of the samples to be plotted and a plot title
@@ -162,12 +170,19 @@ def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="a
         predicted_coords = []
         labels = []
         s = test_samples[plot_index]
-        predicted_proba_map = []
+        predicted_proba = []
         for algo in which_algorithms:
             predicted_coords.append(results[algo]['predictions'][plot_index])
             labels.append(algo.get_name())
-            predicted_proba_map.append(results_proba[algo]['predictions_proba'][plot_index])
-        plot_graph(track_coords, predicted_coords, probabilistic_maps)
+        for algo in results_proba:
+            # Append heatmap data together with bin characterstics of algorithm
+            predicted_proba.append({
+                            'predictions_proba': results_proba[algo]['predictions_proba'][plot_index],
+                            'bin_num': results_proba[algo]['bin_num'],
+                            'min_radius': results_proba[algo]['min_radius'],
+                            'max_radius': results_proba[algo]['max_radius']
+                        })
+        plot_graph(track_coords, predicted_coords, predicted_proba, labels)
 
 def get_result_statistics(results):
     """Return different statistic measures for the given results"""

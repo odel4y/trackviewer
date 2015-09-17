@@ -1,6 +1,8 @@
 #!/usr/bin/python
 #coding:utf-8
+from __future__ import division
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 from extract_features import get_normal_to_line, extend_line
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
@@ -39,9 +41,6 @@ def plot_arrows_along_line(color, center_line):
     for i in range(1, arrow_count + 1):
         plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
 
-def plot_probability_map(probability_map):
-    pass
-
 def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_lines=[], labels=[], title=None, block=True, probability_map=None):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
@@ -62,8 +61,38 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     if title: plt.title(title)
     plt.show(block=block)
 
-def plot_graph(track_coords, predicted_coords, probabilistic_maps):
-    pass
+def plot_probability_heatmap(predicted_proba):
+    prediction =    predicted_proba['predictions_proba']
+    print np.shape(prediction)
+    bin_num =       predicted_proba['bin_num']
+    max_radius =    predicted_proba['max_radius']
+    min_radius =    predicted_proba['min_radius']
+    angle_steps = np.linspace(0., 180., len(prediction))
+    rect_width = angle_steps[1] - angle_steps[0]
+    rect_height = (max_radius - min_radius) / bin_num
+    ax = plt.gca()
+    cmap = plt.get_cmap('Oranges')
+    for angle_i, angle_row in enumerate(prediction):
+        for prob_i, prob in enumerate(angle_row):
+            ax.add_patch(
+                patches.Rectangle(
+                    (angle_i * rect_width, prob_i * rect_height), # X, Y
+                    rect_width,             # width
+                    rect_height,            # height
+                    facecolor=cmap(prob),   # fill color
+                    edgecolor="none"
+                )
+            )
+    print "Done"
+
+def plot_graph(track_coords, predicted_coords, predicted_proba, labels=[]):
+    angle_steps = np.linspace(0., 180., len(track_coords))
+    handles = []
+    fig = plt.figure()
+    plt.hold(True)
+    for proba_map in predicted_proba:
+        plot_probability_heatmap(proba_map)
+    plt.show()
 
 def plot_sampled_track(label):
     fig = plt.figure()
