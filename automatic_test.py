@@ -109,7 +109,7 @@ def predict_proba(algorithms, test_samples):
             results_proba[algo]['max_radius'] = algo.max_radius
     return results_proba
 
-def show_intersection_plot(results, test_samples, which_algorithms="all", which_samples="all"):
+def show_intersection_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):
     print "Show intersection plot..."
     if which_algorithms == "all":
         which_algorithms = results.keys()
@@ -131,13 +131,22 @@ def show_intersection_plot(results, test_samples, which_algorithms="all", which_
             except:
                 plot_cases[worst_case_index] = "Worst case for " + algo.get_name()
     for plot_index, plot_title in plot_cases.iteritems():
-        predicted_coords = []
+        predicted_radii = []
+        predicted_proba = []
         labels = []
         s = test_samples[plot_index]
         for algo in which_algorithms:
-            predicted_coords.append(results[algo]['predictions'][plot_index])
+            predicted_radii.append(results[algo]['predictions'][plot_index])
             labels.append(algo.get_name())
-        plot_intersection(s, predicted_coords, labels, plot_title)
+        for algo in results_proba:
+            # Append heatmap data together with bin characterstics of algorithm
+            predicted_proba.append({
+                            'predictions_proba': results_proba[algo]['predictions_proba'][plot_index],
+                            'bin_num': results_proba[algo]['bin_num'],
+                            'min_radius': results_proba[algo]['min_radius'],
+                            'max_radius': results_proba[algo]['max_radius']
+                        })
+        plot_intersection(s, predicted_radii, predicted_proba, labels, plot_title)
 
 def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):
     print "Show graph plot..."

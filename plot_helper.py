@@ -48,7 +48,7 @@ def plot_arrows_along_line(color, center_line):
     for i in range(1, arrow_count + 1):
         plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
 
-def plot_intersection(sample, predicted_radii=[], labels=[], title=None, block=True, probability_map=None):
+def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[], title=None, block=True, probability_map=None):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     entry_line =            sample['geometry']['entry_line']
