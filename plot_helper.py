@@ -6,7 +6,8 @@ import matplotlib.patches as patches
 import seaborn as sns
 import pandas
 import numpy as np
-from extract_features import get_normal_to_line, extend_line
+from extract_features import get_normal_to_line, extend_line, get_predicted_line,\
+                _feature_types
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from shapely import affinity
 
@@ -47,9 +48,14 @@ def plot_arrows_along_line(color, center_line):
     for i in range(1, arrow_count + 1):
         plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
 
-def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted_lines=[], labels=[], title=None, block=True, probability_map=None):
+def plot_intersection(sample, predicted_radii=[], labels=[], title=None, block=True, probability_map=None):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
+    entry_line =            sample['geometry']['entry_line']
+    exit_line =             sample['geometry']['exit_line']
+    curve_secant =          sample['geometry']['curve_secant']
+    track_line =            sample['geometry']['track_line']
+    intersection_angle =    sample['X'][_feature_types.index('intersection_angle')]
     handles = []
     fig = plt.figure()
     plt.hold(True)
@@ -60,8 +66,9 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
     plot_line('k', curve_secant)
     handles.append( plot_line('r', track_line, 'Measured Track') )
     plot_arrows_along_line('r', track_line)
-    colors = get_distributed_colors(len(predicted_lines))
-    for line, color, label in zip(predicted_lines, colors, labels):
+    colors = get_distributed_colors(len(predicted_radii))
+    for radii, color, label in zip(predicted_radii, colors, labels):
+        line = get_predicted_line(curve_secant, radii, intersection_angle)
         handles.append( plot_line(color, line, label) )
     plt.legend(handles=handles)
     if title: plt.title(title)
@@ -79,7 +86,7 @@ def plot_probability_heatmap(predicted_proba):
     p = ax.pcolormesh(angle_steps, radius_steps, prediction, cmap="Oranges")
     plt.gcf().colorbar(p)
 
-def plot_graph(track_radii, predicted_radii, predicted_proba, labels=[], title=None):
+def plot_graph(track_radii, predicted_radii, predicted_proba=[], labels=[], title=None):
     angle_steps = np.linspace(0., 180., len(predicted_radii[0]))
     handles = []
     fig = plt.figure()
