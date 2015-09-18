@@ -417,19 +417,37 @@ def sample_line(curve_secant, track_line, intersection_angle):
         radii.append(float(r))
     return radii
 
-def get_predicted_line(curve_secant, radii_pred, intersection_angle):
-    """Get a prediction for the track along the curve and convert it into a LineString"""
+def get_cartesian_from_polar(R, Phi, curve_secant, intersection_angle):
+    """Transform arrays of polar coordinates (rad) to cartesian system with curve secant as origin"""
     origin = curve_secant.interpolate(0.5, normalized=True)
     half_curve_secant = LineString([origin,\
                                     curve_secant.interpolate(0.0, normalized=True)])
-    angles = np.linspace(0.0, np.pi, len(radii_pred))
-    points = []
-    for i in xrange(len(radii_pred)):
+    X = np.zeros(np.shape(R))
+    Y = np.zeros(np.shape(R))
+
+    def get_xy(r, phi):
         # depending on whether it is a right or a left turn the ruler has to rotate in different directions
-        rotated_ruler = affinity.rotate(half_curve_secant, copysign(angles[i],intersection_angle), origin=origin, use_radians=True)
-        p = extended_interpolate(rotated_ruler, radii_pred[i], normalized=False)
-        points.append(p)
-    return LineString(points)
+        rotated_ruler = affinity.rotate(half_curve_secant, copysign(phi,intersection_angle), origin=origin, use_radians=True)
+        p = extended_interpolate(rotated_ruler, r, normalized=False)
+        (x, y), = list(p.coords)
+        return x, y
+
+    for i_row in range(np.shape(R)[0]):
+        try:
+            for j_col in range(np.shape(R)[1]):
+                X[i_row, j_col], Y[i_row, j_col] = get_xy(R[i_row, j_col], Phi[i_row, j_col])
+        except IndexError:
+            # One dimensional array
+            X[i_row], Y[i_row] = get_xy(R[i_row], Phi[i_row])
+
+    return (X, Y)
+
+def get_predicted_line(curve_secant, radii_pred, intersection_angle):
+    """Convert a prediction to cartesian coordinates and represent it as LineString"""
+    angles = np.linspace(0., np.pi, len(radii_pred))
+    (X, Y) = get_cartesian_from_polar(radii_pred, angles, curve_secant, intersection_angle)
+    coords = zip(list(X), list(Y))
+    return LineString(coords)
 
 def get_osm(int_sit):
     print 'Downloading OSM...'
