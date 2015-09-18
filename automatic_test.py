@@ -182,7 +182,7 @@ def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="a
                             'min_radius': results_proba[algo]['min_radius'],
                             'max_radius': results_proba[algo]['max_radius']
                         })
-        plot_graph(track_coords, predicted_coords, predicted_proba, labels)
+        plot_graph(track_coords, predicted_coords, predicted_proba, labels, plot_title)
 
 def get_result_statistics(results):
     """Return different statistic measures for the given results"""

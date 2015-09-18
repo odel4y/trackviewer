@@ -69,18 +69,17 @@ def plot_intersection(entry_line, exit_line, curve_secant, track_line, predicted
 
 def plot_probability_heatmap(predicted_proba):
     prediction =    np.rot90(predicted_proba['predictions_proba'])
-    print np.shape(prediction)
     bin_num =       np.shape(prediction)[0]
     max_radius =    predicted_proba['max_radius']
     min_radius =    predicted_proba['min_radius']
-    angle_steps =   np.linspace(0., 180., np.shape(prediction)[1])
-    radius_steps =  np.linspace(max_radius, min_radius, bin_num)
-    # heatmap_frame = pandas.DataFrame(data=prediction, index=radius_steps, columns=angle_steps)
-    heatmap_frame = pandas.DataFrame(data=prediction)
-    ax = sns.heatmap(heatmap_frame, xticklabels=False, yticklabels=False)
-    return ax
+    angle_steps =   np.linspace(0., 180., np.shape(prediction)[1] + 1)
+    radius_steps =  np.linspace(max_radius, min_radius, bin_num + 1)
+    print radius_steps
+    ax = plt.gca()
+    p = ax.pcolormesh(angle_steps, radius_steps, prediction, cmap="Oranges")
+    plt.gcf().colorbar(p)
 
-def plot_graph(track_radii, predicted_radii, predicted_proba, labels=[]):
+def plot_graph(track_radii, predicted_radii, predicted_proba, labels=[], title=None):
     angle_steps = np.linspace(0., 180., len(track_radii))
     handles = []
     fig = plt.figure()
@@ -93,6 +92,7 @@ def plot_graph(track_radii, predicted_radii, predicted_proba, labels=[]):
     for radii, color, label in zip(predicted_radii, colors, labels):
         handles.append( plot_coords(angle_steps, radii, color, label) )
     plt.legend(handles=handles)
+    if title: plt.title(title)
     plt.show()
 
 def plot_sampled_track(label):
