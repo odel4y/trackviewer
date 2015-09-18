@@ -72,7 +72,8 @@ def plot_probability_heatmap(predicted_proba):
     bin_num =       np.shape(prediction)[0]
     max_radius =    predicted_proba['max_radius']
     min_radius =    predicted_proba['min_radius']
-    angle_steps =   np.linspace(0., 180. + 180./bin_num, np.shape(prediction)[1] + 1)
+    bin_width =     180./(np.shape(prediction)[1])
+    angle_steps =   np.linspace(0., 180.+bin_width, np.shape(prediction)[1] + 1) - bin_width/2
     radius_steps =  np.linspace(max_radius, min_radius, bin_num + 1)
     ax = plt.gca()
     p = ax.pcolormesh(angle_steps, radius_steps, prediction, cmap="Oranges")
