@@ -71,11 +71,21 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
         X = filter_feature_matrix(X, self.features)
         X = np.tile(X, (len(self.angle_steps), 1))
         X = np.column_stack((X, self.angle_steps))
+        
         y_pred = self.classifier.predict_proba(X)
+
+        # Pad the probability array with zero columns for disregarded classes
+        missing_classes = [i for i in range(self.bin_num) if i not in self.classifier.classes_]
+        y_pred = np.insert(y_pred, sorted(list(missing_classes)), 0., axis=1)
+
         return y_pred
 
     def continuous_to_bin(self, v):
-        return np.floor((v - self.min_radius) / (self.max_radius - self.min_radius) * self.bin_num)
+        return np.minimum(
+            np.floor((v - self.min_radius) / (self.max_radius - self.min_radius) * self.bin_num),
+            np.ones(np.shape(v))*(self.bin_num-1)
+            )
 
     def bin_to_continuous(self, v):
-        return self.min_radius + (self.max_radius - self.min_radius) * (v / self.bin_num)
+        half_bin_height = (self.max_radius - self.min_radius) / self.bin_num / 2
+        return self.min_radius + (self.max_radius - self.min_radius) * (v / self.bin_num) + half_bin_height

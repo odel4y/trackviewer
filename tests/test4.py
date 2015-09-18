@@ -28,7 +28,6 @@ samples = automatic_test.load_samples('../data/training_data/samples.pickle')
 samples = automatic_test.normalize_features(samples)
 train_samples, test_samples = automatic_test.get_partitioned_samples(samples, 0.8)
 automatic_test.train(algos, train_samples)
-print rfc_algo.classifier.n_classes_
 results = automatic_test.predict(algos, test_samples)
 results_proba = automatic_test.predict_proba([rfc_algo], test_samples)
 # automatic_test.show_intersection_plot(results, test_samples, which_samples="best-worst-case")
