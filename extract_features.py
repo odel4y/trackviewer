@@ -146,11 +146,17 @@ def get_way_lines(int_sit, osm):
     return (entry_way_line_string, exit_way_line_string)
 
 def get_vec_angle(vec1, vec2):
-    """Return angle between two vectors"""
+    """Returns angle in radians between two vectors"""
     normal = np.cross(vec1, vec2) # The sign of the angle can be determined
     angle = np.arccos(np.dot(vec1, vec2)/(np.linalg.norm(vec1) * np.linalg.norm(vec2))) * normal / np.linalg.norm(normal)
     if np.isnan(angle): angle = 0.0 # Account for numeric inaccuracies
     return angle
+
+def get_angle_between_lines(line1, line2):
+    """The same as get_intersection_angle but both lines are pointing away from origin"""
+    vec1 = np.array(line1.coords[1]) - np.array(line1.coords[0])
+    vec2 = np.array(line2.coords[1]) - np.array(line2.coords[0])
+    return get_vec_angle(vec1, vec2)
 
 def get_intersection_angle(entry_line, exit_line):
     """Returns the angle between entry and exit way in radians with parallel ways being a zero angle.
@@ -427,7 +433,7 @@ def get_cartesian_from_polar(R, Phi, curve_secant, intersection_angle):
 
     def get_xy(r, phi):
         # depending on whether it is a right or a left turn the ruler has to rotate in different directions
-        rotated_ruler = affinity.rotate(half_curve_secant, copysign(phi,intersection_angle), origin=origin, use_radians=True)
+        rotated_ruler = affinity.rotate(half_curve_secant, phi*np.sign(intersection_angle), origin=origin, use_radians=True)
         p = extended_interpolate(rotated_ruler, r, normalized=False)
         (x, y), = list(p.coords)
         return x, y

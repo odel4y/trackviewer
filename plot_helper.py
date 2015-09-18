@@ -7,7 +7,7 @@ import seaborn as sns
 import pandas
 import numpy as np
 from extract_features import get_normal_to_line, extend_line, get_predicted_line,\
-                _feature_types
+                _feature_types, get_cartesian_from_polar, get_angle_between_lines
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from shapely import affinity
 
@@ -48,7 +48,28 @@ def plot_arrows_along_line(color, center_line):
     for i in range(1, arrow_count + 1):
         plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
 
-def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[], title=None, block=True, probability_map=None):
+def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_angle, preserve_orientation=False):
+    """Plot a heatmap in polar coordinates"""
+    prediction =    np.flipud(np.rot90(predicted_proba['predictions_proba']))
+    bin_num =       np.shape(prediction)[0]
+    max_radius =    predicted_proba['max_radius']
+    min_radius =    predicted_proba['min_radius']
+    bin_width =     np.pi/(np.shape(prediction)[1])
+    R =             np.rot90(np.tile(np.linspace(max_radius, min_radius, bin_num + 1), (np.shape(prediction)[1] + 1, 1)))
+    if preserve_orientation:
+        Phi = np.tile((np.linspace(0.-bin_width/2, np.pi+bin_width/2, np.shape(prediction)[1] + 1) - bin_width/2), (bin_num + 1, 1))
+    else:
+        # Calculate curve_secant angle
+        x_axis = LineString([(0,0),(1,0)])
+        curve_secant_angle = get_angle_between_lines(x_axis, curve_secant)
+        print curve_secant_angle/np.pi*180
+        Phi = np.tile((np.linspace(0.-bin_width/2, np.pi+bin_width/2, np.shape(prediction)[1] + 1) - bin_width/2), (bin_num + 1, 1))
+    X, Y =          get_cartesian_from_polar(R, Phi, curve_secant, intersection_angle)
+    ax = plt.gca()
+    p = ax.pcolormesh(X, Y, prediction, cmap="Oranges")
+    plt.gcf().colorbar(p)
+
+def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[], title=None, block=True, probability_map=None, preserve_orientation=False):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     entry_line =            sample['geometry']['entry_line']
@@ -56,10 +77,18 @@ def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[],
     curve_secant =          sample['geometry']['curve_secant']
     track_line =            sample['geometry']['track_line']
     intersection_angle =    sample['X'][_feature_types.index('intersection_angle')]
+    if not preserve_orientation:
+        # Rotate all geometry in order to have curve_secant aligned horizontally
+        # Calculate curve_secant angle
+        x_axis = LineString([(0,0),(1,0)])
+        curve_secant_angle = get_angle_between_lines(x_axis, curve_secant)
+
     handles = []
     fig = plt.figure()
     plt.hold(True)
     plt.axis('equal')
+    for proba_map in predicted_proba:
+        plot_polar_probability_heatmap(proba_map, curve_secant, intersection_angle, preserve_orientation)
     plot_lines('k', entry_line, exit_line)
     # plot_line('m', normal_en, normal_ex)
     # plot_line('g', neg_normal_en, neg_normal_ex)
@@ -75,6 +104,7 @@ def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[],
     plt.show(block=block)
 
 def plot_probability_heatmap(predicted_proba):
+    """Plot a heatmap in cartesian coordinates"""
     prediction =    np.rot90(predicted_proba['predictions_proba'])
     bin_num =       np.shape(prediction)[0]
     max_radius =    predicted_proba['max_radius']

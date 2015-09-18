@@ -30,5 +30,5 @@ train_samples, test_samples = automatic_test.get_partitioned_samples(samples, 0.
 automatic_test.train(algos, train_samples)
 results = automatic_test.predict(algos, test_samples)
 results_proba = automatic_test.predict_proba([rfc_algo], test_samples)
-# automatic_test.show_intersection_plot(results, test_samples, which_samples="best-worst-case")
-automatic_test.show_graph_plot(results, test_samples, results_proba, which_samples="best-worst-case")
+automatic_test.show_intersection_plot(results, test_samples, results_proba, which_samples="best-worst-case")
+# automatic_test.show_graph_plot(results, test_samples, results_proba, which_samples="best-worst-case")
