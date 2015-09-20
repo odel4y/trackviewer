@@ -109,7 +109,7 @@ def predict_proba(algorithms, test_samples):
             results_proba[algo]['max_radius'] = algo.max_radius
     return results_proba
 
-def show_intersection_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):
+def show_intersection_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all", orientation="preserve"):
     print "Show intersection plot..."
     if which_algorithms == "all":
         which_algorithms = results.keys()
@@ -146,7 +146,7 @@ def show_intersection_plot(results, test_samples, results_proba={}, which_algori
                             'min_radius': results_proba[algo]['min_radius'],
                             'max_radius': results_proba[algo]['max_radius']
                         })
-        plot_intersection(s, predicted_radii, predicted_proba, labels, plot_title)
+        plot_intersection(s, predicted_radii, predicted_proba, labels, plot_title, orientation=orientation)
 
 def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):
     print "Show graph plot..."
