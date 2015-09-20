@@ -104,7 +104,7 @@ def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[],
     plt.axis('equal')
 
     for proba_map in predicted_proba:
-        plot_polar_probability_heatmap(proba_map, curve_secant, intersection_angle, rotation)
+        plot_polar_probability_heatmap(proba_map, curve_secant, intersection_angle)
 
     plot_lines('k', entry_line, exit_line)
     # plot_line('m', normal_en, normal_ex)
