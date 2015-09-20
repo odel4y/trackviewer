@@ -34,7 +34,7 @@ _feature_types = [
     "bicycle_designated_exit",                  # Is there a designated bicycle way in the exit street?
     "lane_count_entry",                         # Total number of lanes in entry way
     "lane_count_exit",                          # Total number of lanes in exit way
-    "has_right_of_way"                          # Does the vehicle have right of way at the intersection?
+    "has_right_of_way"                          # Does the vehicle with the respective manoeuver have right of way at the intersection?
 ]
 _features = {name: None for name in _feature_types}
 
@@ -216,8 +216,16 @@ def get_lane_count(way):
             print "Guessing 2 lanes"
             return 2
 
-def get_has_right_of_way():
-    pass
+def get_has_right_of_way(entry_way):
+    if "highway" in entry_way["tags"] and entry_way["tags"]["highway"] in ["primary", "secondary", "tertiary"]:
+        # Entry way is a through road ("Durchgangsstraße")
+        # It thus has priority
+        return True
+    elif "priority_road" in entry_way["tags"] and entry_way["tags"]["priority_road"] == "designated":
+        # Designated priority road -> almost never in OSM data
+        return True
+    else:
+        return False
 
 def find_nearest_coord_index(line, ref_p):
     """Returns the index of the least distant coordinate of a LineString line
