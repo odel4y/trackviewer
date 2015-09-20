@@ -423,6 +423,19 @@ def sample_line(curve_secant, track_line, intersection_angle):
         radii.append(float(r))
     return radii
 
+def rotate_xy(coords, phi, rot_c):
+    """Rotate coords [n x 2] in 2D plane about the rotation center rot_c [1 x 2] with angle (rad)"""
+    # Rotation matrix in 2D plane
+    R_mat = np.array([
+        [np.cos(phi), -np.sin(phi)],
+        [np.sin(phi), np.cos(phi)]
+    ])
+    # Shift coordinates to origin
+    origin_coords = np.transpose(coords - rot_c)
+    rot_origin_coords = np.dot(R_mat, origin_coords)
+    # Shift back to rotation center
+    return np.transpose(rot_origin_coords) + rot_c
+
 def get_cartesian_from_polar(R, Phi, curve_secant, intersection_angle):
     """Transform arrays of polar coordinates (rad) to cartesian system with curve secant as origin"""
     origin = curve_secant.interpolate(0.5, normalized=True)
