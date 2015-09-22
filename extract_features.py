@@ -54,6 +54,10 @@ _sample = {
     'pickled_filename': None    # Filename of prepared pickle file for later lookup
 }
 
+_regarded_highways = ["motorway", "trunk", "primary", "secondary", "tertiary",
+            "unclassified", "residential", "service", "living_street", "track",
+            "road"]
+
 class SampleError(Exception):
     pass
 
@@ -63,14 +67,20 @@ class MaxspeedMissingError(Exception):
 class NoIntersectionError(Exception):
     pass
 
+class ElementMissingInOSMError(Exception):
+    pass
+
 def get_osm_data(int_sit):
     tries = 0
     while tries < 3:
         try:
             tries += 1
             api = overpass.API()
-            search_str = '(way(%d);way(%d););(._;>>;);out;' % \
-                            (int_sit["entry_way"], int_sit["exit_way"])
+            # Returns entry and exit way as well as child nodes
+            # search_str = '(way(%d);way(%d););(._;>>;);out;' % \
+            #                 (int_sit["entry_way"], int_sit["exit_way"])
+            # Returns all participating ways in intersection as well as child nodes
+            search_str = '(node(%d);way(bn););(._;>;);out;' % (int_sit["intersection_node"])
             result = api.Get(search_str)
             return result["elements"]
         except Exception as e:
@@ -105,7 +115,7 @@ def get_element_by_id(osm, el_id):
         try:
             this_el = osm_iter.next()
         except StopIteration:
-            this_el = None
+            raise ElementMissingInOSMError("Element with ID: %d was not found in OSM data" % el_id)
     return this_el
 
 def get_line_string_from_node_ids(osm, nodes):
