@@ -206,6 +206,7 @@ def get_lane_count(way):
         lanes = way["tags"]["lanes"]
         if lanes < 2 and get_oneway(way) == True:
             # A street that is not oneway must have at least 2 lanes
+            print "Correcting lanes to 2 because street is not oneway"
             lanes = 2
         return lanes
     else:
@@ -222,7 +223,7 @@ def get_has_right_of_way(entry_way):
         # It thus has priority
         return True
     elif "priority_road" in entry_way["tags"] and entry_way["tags"]["priority_road"] == "designated":
-        # Designated priority road -> almost never in OSM data
+        # Designated priority road -> almost never occurs in OSM data
         return True
     else:
         return False
