@@ -314,16 +314,49 @@ def get_lane_count(way):
             print "Guessing 2 lanes"
             return 2
 
-def get_has_right_of_way(entry_way):
-    if "highway" in entry_way["tags"] and entry_way["tags"]["highway"] in ["primary", "secondary", "tertiary"]:
+def way_has_priority_by_tags(way):
+    """Determine if a certain way is prioritized by its tags"""
+    if "highway" in way and way["tags"]["highway"] in ["primary", "secondary", "tertiary"]:
         # Entry way is a through road ("Durchgangsstraße")
         # It thus has priority
         return True
-    elif "priority_road" in entry_way["tags"] and entry_way["tags"]["priority_road"] == "designated":
+    elif "priority_road" in way["tags"] and way["tags"]["priority_road"] == "designated":
         # Designated priority road -> almost never occurs in OSM data
         return True
     else:
         return False
+
+def get_has_right_of_way(ways, way_lines):
+    # TODO: Does not represent intersections with signals
+    # TODO: Does not consider priority signs
+    if way_has_priority_by_tags(ways["entry_way"]):
+        print "Entry way has the right-of-way by tags [has_right_of_way=True]"
+        return True
+    # Find out the intersection angle between entry_way and exit_way
+    target_intersection_angle = get_intersection_angle(way_lines["entry_way"], way_lines["exit_way"])
+    # Find ways that have a lower intersection_angle and thus are to the right and
+    # might have to be prioritized
+    ways_to_the_right = []
+    for way, way_line in zip(ways["other_ways"], way_lines["other_ways"]):
+        this_intersection_angle = get_intersection_angle(way_lines["entry_way"], way_line)
+        if this_intersection_angle < target_intersection_angle:
+            ways_to_the_right.append(way)
+    # Determine if the respective way to the right has to be prioritized
+    for way in ways_to_the_right:
+        # Is the way pointing at the intersection? -> Cars definitely enter from that way
+        # If it does not point at the intersection check if it is a oneway
+        if way_is_pointing_towards_intersection(way, int_sit) or get_oneway(way)==False:
+            print "Ways from the right have priority [has_right_of_way=False]"
+            return False
+    # Any way has priority and entry_way does not?
+    for way in ways["other_ways"]:
+        if way_has_priority_by_tags(way):
+            if way_is_pointing_towards_intersection(way) or get_oneway(way)==False:
+                print "Other ways are explicitly prioritized [has_right_of_way=False]"
+                return False
+    # By default assume to have right-of-way
+    print "Default right-of-way [has_right_of_way=True]"
+    return True
 
 def find_nearest_coord_index(line, ref_p):
     """Returns the index of the least distant coordinate of a LineString line
