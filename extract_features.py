@@ -5,6 +5,7 @@ import os.path
 import pickle
 import overpass
 import pyproj
+import copy
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from shapely import affinity
 from math import copysign
@@ -144,16 +145,102 @@ def get_node_ids_from_way(osm, way, start_node_id=None, end_node_id=None, unders
     else:
         return way_node_ids
 
-def get_way_lines(int_sit, osm):
-    """Return LineStrings for the actual entry and exit way separated by the intersection node.
-    The resulting entry way faces towards the intersection and the exit way faces away from the intersection."""
-    entry_way = get_element_by_id(osm, int_sit["entry_way"])
-    exit_way = get_element_by_id(osm, int_sit["exit_way"])
-    entry_way_node_ids = get_node_ids_from_way(osm, entry_way, int_sit["entry_way_node"], int_sit["intersection_node"], True, False)
-    exit_way_node_ids = get_node_ids_from_way(osm, exit_way, int_sit["intersection_node"], int_sit["exit_way_node"], False, True)
-    entry_way_line_string = get_line_string_from_node_ids(osm, entry_way_node_ids)
-    exit_way_line_string = get_line_string_from_node_ids(osm, exit_way_node_ids)
-    return (entry_way_line_string, exit_way_line_string)
+def way_is_pointing_towards_intersection(way, int_sit):
+    """Determine if OSM way's direction is towards the intersection center.
+    This method only makes sense for ways that end at the intersection"""
+    intersection_node_id = int_sit["intersection_node"]
+    return way["nodes"].index(intersection_node_id) > 0
+
+def way_crosses_intersection(way, int_sit):
+    """Determine if a way crosses the intersection (does not end at it)"""
+    intersection_node_index = way["nodes"].index(int_sit["intersection_node"])
+    return 0 < intersection_node_index < (len(way["nodes"]) - 1)
+
+def split_way_at(way, index):
+    """Splits way at an index so that the two parts both contain the node with index"""
+    part1 = copy.deepcopy(way)
+    part2 = copy.deepcopy(way)
+    del part1["nodes"][index+1:]
+    del part2["nodes"][:index]
+    return (part1, part2)
+
+def split_ways_at_intersection(ways, int_sit):
+    """Split ways that are crossing the intersection into two separate parts"""
+    split_ways = []
+    for way in ways:
+        if way_crosses_intersection(way, int_sit):
+            intersection_node_index = way["nodes"].index(int_sit["intersection_node"])
+            split_ways.extend(split_way_at(way, intersection_node_index))
+        else:
+            split_ways.append(way)
+    return split_ways
+
+def get_intersection_ways(int_sit, osm):
+    """Find all suitable ways in OSM data and split them at the intersection
+    if necessary. Then separate the entry_way and exit_way from the other ways
+    and save into dictionary"""
+    def is_suitable_way(el):
+        return  el["type"] == "way" and \
+                "highway" in el["tags"] and \
+                el["tags"]["highway"] in _regarded_highways
+    intersection_ways = [el for el in osm if is_suitable_way(el)]
+
+    # Split ways at the intersection center
+    intersection_ways = split_ways_at_intersection(intersection_ways, int_sit)
+    # Filter out and remove entry and exit ways -> potentially only removing the part that enters/exits the intersection
+    entry_way, = [way for way in intersection_ways if way["id"] == int_sit["entry_way"] and int_sit["entry_way_node"] in way["nodes"]]
+    exit_way, = [way for way in intersection_ways if way["id"] == int_sit["exit_way"] and int_sit["exit_way_node"] in way["nodes"]]
+    intersection_ways.remove(entry_way)
+    intersection_ways.remove(exit_way)
+    return {
+        "entry_way": entry_way,
+        "exit_way": exit_way,
+        "other_ways": intersection_ways
+    }
+
+def get_intersection_way_lines(ways, int_sit, osm):
+    """Get a dictionary of LineString for the respective ways. All LineStrings
+    are directed away from the intersection except for the entry_way"""
+    lines = {}
+    if way_is_pointing_towards_intersection(ways["entry_way"], int_sit):
+        lines["entry_way"] = get_line_string_from_node_ids(osm, ways["entry_way"]["nodes"])
+    else:
+        lines["entry_way"] = get_line_string_from_node_ids(osm, reversed(ways["entry_way"]["nodes"]))
+    if not way_is_pointing_towards_intersection(ways["exit_way"], int_sit):
+        lines["exit_way"] = get_line_string_from_node_ids(osm, ways["exit_way"]["nodes"])
+    else:
+        lines["exit_way"] = get_line_string_from_node_ids(osm, reversed(ways["exit_way"]["nodes"]))
+    other_lines = []
+    for way in ways["other_ways"]:
+        if not way_is_pointing_towards_intersection(way, int_sit):
+            other_lines.append(get_line_string_from_node_ids(osm, way["nodes"]))
+        else:
+            other_lines.append(get_line_string_from_node_ids(osm, reversed(way["nodes"])))
+    lines["other_ways"] = other_lines
+    return lines
+
+# def get_way_lines(int_sit, osm):
+#     """Return LineStrings for the actual entry and exit way separated by the intersection node.
+#     The resulting entry way faces towards the intersection and the exit way faces away from the intersection."""
+#     # Get all ways from osm data that are arms of the intersection
+#     intersection_ways = get_intersection_ways(osm)
+#     # Split ways at the intersection center
+#     intersection_ways = split_ways_at_intersection(intersection_ways, int_sit)
+#     # Filter out and remove entry and exit ways -> potentially only removing the part that enters/exits the intersection
+#     entry_way, = [way for way in intersection_ways if way["id"] == int_sit["entry_way"] and int_sit["entry_way_node"] in way["nodes"]]
+#     exit_way, = [way for way in intersection_ways if way["id"] == int_sit["exit_way"] and int_sit["exit_way_node"] in way["nodes"]]
+#     intersection_ways.remove(entry_way)
+#     intersection_ways.remove(exit_way)
+#     # Reverse ways if necessary for standardized orientation and make LineStrings
+#     if way_is_pointing_towards_intersection(entry_way, int_sit):
+#         entry_way_line_string = get_line_string_from_node_ids(osm, entry_way["nodes"])
+#     else:
+#         entry_way_line_string = get_line_string_from_node_ids(osm, reversed(entry_way["nodes"]))
+#     if not way_is_pointing_towards_intersection(exit_way, int_sit):
+#         exit_way_line_string = get_line_string_from_node_ids(osm, exit_way["nodes"])
+#     else:
+#         exit_way_line_string = get_line_string_from_node_ids(osm, reversed(exit_way["nodes"]))
+#     return (entry_way_line_string, exit_way_line_string)
 
 def get_vec_angle(vec1, vec2):
     """Returns angle in radians between two vectors"""
@@ -499,20 +586,27 @@ def get_osm(int_sit):
     return transform_osm_to_cartesian(osm)
 
 def get_intersection_geometry(int_sit, osm):
-    entry_way = get_element_by_id(osm, int_sit["entry_way"])
-    exit_way = get_element_by_id(osm, int_sit["exit_way"])
-    entry_line, exit_line = get_way_lines(int_sit, osm)
-    curve_secant = get_curve_secant_line(entry_line, exit_line)
+    ways = get_intersection_ways(int_sit, osm)
+    way_lines = get_intersection_way_lines(ways, int_sit, osm)
+    curve_secant = get_curve_secant_line(way_lines["entry_way"], way_lines["exit_way"])
     track = int_sit["track"]
-    return entry_way, exit_way, entry_line, exit_line, curve_secant, track
+    return ways, way_lines, curve_secant, track
 
-def get_feature_dict(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track):
+def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     def convert_boolean(b):
         if b: return 1.0
         else: return -1.0
+    entry_way = ways["entry_way"]
+    exit_way = ways["exit_way"]
+    other_ways = ways["other_ways"]
+    entry_line = way_lines["entry_way"]
+    exit_line = way_lines["exit_way"]
+    exit_line = way_lines["exit_way"]
+    other_lines = way_lines["other_ways"]
+
     features = copy.deepcopy(_features)
     track_line = LineString([(x, y) for (x,y,_) in track])
-    features["intersection_angle"] =                    float(get_intersection_angle(entry_line, exit_line))
+    features["intersection_angle"] =                    float(get_intersection_angle(entry_way, exit_line))
     features["maxspeed_entry"] =                        float(get_maxspeed(entry_way))
     features["maxspeed_exit"] =                         float(get_maxspeed(exit_way))
     features["oneway_entry"] =                          convert_boolean(get_oneway(entry_way))
@@ -520,14 +614,14 @@ def get_feature_dict(int_sit, entry_way, exit_way, entry_line, exit_line, curve_
     lane_distance_entry_exact, lane_distance_exit_exact = get_lane_distance_exact(curve_secant, track_line)
     features["lane_distance_entry_exact"] =             float(lane_distance_entry_exact)
     features["lane_distance_exit_exact"] =              float(lane_distance_exit_exact)
-    lane_distance_entry_lane_center, lane_distance_exit_lane_center = get_lane_distance_lane_center(entry_line, exit_line, curve_secant)
+    lane_distance_entry_lane_center, lane_distance_exit_lane_center = get_lane_distance_lane_center(entry_way, exit_line, curve_secant)
     features["lane_distance_entry_lane_center"] =       lane_distance_entry_lane_center
     features["lane_distance_exit_lane_center"] =        lane_distance_exit_lane_center
-    features["lane_distance_entry_projected_normal"] =  float(get_lane_distance_projected_normal(entry_line, entry_line.length - INT_DIST, track_line))
+    features["lane_distance_entry_projected_normal"] =  float(get_lane_distance_projected_normal(entry_way, entry_way.length - INT_DIST, track_line))
     features["lane_distance_exit_projected_normal"] =   float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
-    features["curvature_entry"] =                       float(get_line_curvature(get_reversed_line(entry_line)))
+    features["curvature_entry"] =                       float(get_line_curvature(get_reversed_line(entry_way)))
     features["curvature_exit"] =                        float(get_line_curvature(get_reversed_line(exit_line)))
-    vehicle_speed_entry = get_vehicle_speed(entry_line, entry_line.length - INT_DIST, track)
+    vehicle_speed_entry = get_vehicle_speed(entry_way, entry_way.length - INT_DIST, track)
     vehicle_speed_exit = get_vehicle_speed(exit_line, INT_DIST, track)
     features["vehicle_speed_entry"] =                   float(vehicle_speed_entry)
     features["vehicle_speed_exit"] =                    float(vehicle_speed_exit)
@@ -535,6 +629,7 @@ def get_feature_dict(int_sit, entry_way, exit_way, entry_line, exit_line, curve_
     features["bicycle_designated_exit"] =               convert_boolean(get_bicycle_designated(exit_way))
     features["lane_count_entry"] =                      float(get_lane_count(entry_way))
     features["lane_count_exit"] =                       float(get_lane_count(exit_way))
+    features["has_right_of_way"] =                      convert_boolean(get_has_right_of_way(ways, way_lines))
     label = copy.deepcopy(_label)
     radii = sample_line(curve_secant, track_line, features["intersection_angle"])
     label["radii"] = radii
@@ -573,16 +668,16 @@ if __name__ == "__main__":
             with open(fn, 'r') as f:
                 int_sit = pickle.load(f)
             osm = get_osm(int_sit)
-            entry_way, exit_way, entry_line, exit_line, curve_secant, track = get_intersection_geometry(int_sit, osm)
-            features, label = get_feature_dict(int_sit, entry_way, exit_way, entry_line, exit_line, curve_secant, track)
+            ways, way_lines, curve_secant, track = get_intersection_geometry(int_sit, osm)
+            features, label = get_feature_dict(int_sit, ways, way_lines, curve_secant, track)
             track_line = LineString([(x, y) for (x,y,_) in track])
             # print features in readable format
             import json
             text = json.dumps(features, sort_keys=True, indent=4)
             print text
             feature_array, label_array = convert_to_array(features, label)
-            sample['geometry']['entry_line'] = entry_line
-            sample['geometry']['exit_line'] = exit_line
+            sample['geometry']['entry_line'] = way_lines["entry_way"]
+            sample['geometry']['exit_line'] = way_lines["exit_way"]
             sample['geometry']['curve_secant'] = curve_secant
             sample['geometry']['track_line'] = track_line
             sample['X'] = feature_array
