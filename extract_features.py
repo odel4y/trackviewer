@@ -6,6 +6,7 @@ import pickle
 import overpass
 import pyproj
 import copy
+import plot_helper
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from shapely import affinity
 from math import copysign
@@ -717,6 +718,7 @@ if __name__ == "__main__":
             sample['y'] = label_array
             sample['pickled_filename'] = fn
             samples.append(sample)
+            plot_helper.plot_intersection(sample)
         except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError) as e:
             print '################'
             print '################'
