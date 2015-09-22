@@ -205,12 +205,32 @@ def output_formatted_result(results, output="console"):
     for algo, rs in result_statistics.iteritems():
         if output == "console":
             print 'Test with algorithm:', algo.get_name()
+            if algo.get_description() != '':
+                print 'Description:', algo.get_description()
             print 'Cumulated MSE:', rs['cumulated_mse']
             print 'Average MSE:', rs['average_mse']
             print 'Minimum MSE:', rs['min_mse']
             print 'Maximum MSE:', rs['max_mse']
 
+def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False):
+    """General prediction quality test for algorithms with the option of cross validation"""
+    results = []
+    if not cross_validation:
+        train_sample_sets = [train_sample_sets]
+        test_sample_sets = [test_sample_sets]
+    for train_samples, test_samples in zip(train_sample_sets, test_sample_sets):
+        train(algorithms, train_samples)
+        results.append(predict(algorithms, test_samples))
+    flattened_results = results[0]
+    for result in results[1:]:
+        for algo in result:
+            flattened_results[algo]['predictions'].extend(result[algo]['predictions'])
+            flattened_results[algo]['mse'].extend(result[algo]['mse'])
+    output_formatted_result(flattened_results)
+
 def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, features, min_num_features=4, cross_validation=False):
+    """Test the prediction quality of all possible combinations of features with
+    a minimum number of features with a certain Algorithm class. Cross validation is possible"""
     feature_sets = []               # Contains all the possible combinations of features with a minimum number of them
     results = []
     rating_arg = 'average_mse'      # The argument to be used as a comparison score
