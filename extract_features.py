@@ -60,6 +60,9 @@ _regarded_highways = ["motorway", "trunk", "primary", "secondary", "tertiary",
             "unclassified", "residential", "service", "living_street", "track",
             "road"]
 
+class SampleTaggingError(Exception):
+    pass
+
 class SampleError(Exception):
     pass
 
@@ -176,6 +179,14 @@ def split_ways_at_intersection(ways, int_sit):
             split_ways.append(way)
     return split_ways
 
+def delete_duplicate_ways(ways):
+    delete_indices = []
+    for i, cmp_way in enumerate(ways):
+        for j in range(i+1, len(ways)):
+            if cmp_way["nodes"] == ways[j]["nodes"]:
+                delete_indices.append(i)
+    return [way for i, way in enumerate(ways) if i not in delete_indices]
+
 def get_intersection_ways(int_sit, osm):
     """Find all suitable ways in OSM data and split them at the intersection
     if necessary. Then separate the entry_way and exit_way from the other ways
@@ -185,12 +196,15 @@ def get_intersection_ways(int_sit, osm):
                 "highway" in el["tags"] and \
                 el["tags"]["highway"] in _regarded_highways
     intersection_ways = [el for el in osm if is_suitable_way(el)]
-
+    intersection_ways = delete_duplicate_ways(intersection_ways)
     # Split ways at the intersection center
     intersection_ways = split_ways_at_intersection(intersection_ways, int_sit)
     # Filter out and remove entry and exit ways -> potentially only removing the part that enters/exits the intersection
-    entry_way, = [way for way in intersection_ways if way["id"] == int_sit["entry_way"] and int_sit["entry_way_node"] in way["nodes"]]
-    exit_way, = [way for way in intersection_ways if way["id"] == int_sit["exit_way"] and int_sit["exit_way_node"] in way["nodes"]]
+    try:
+        entry_way, = [way for way in intersection_ways if way["id"] == int_sit["entry_way"] and int_sit["entry_way_node"] in way["nodes"]]
+        exit_way, = [way for way in intersection_ways if way["id"] == int_sit["exit_way"] and int_sit["exit_way_node"] in way["nodes"]]
+    except ValueError:
+        raise SampleTaggingError("Not exactly 1 way has been found for entry or exit")
     intersection_ways.remove(entry_way)
     intersection_ways.remove(exit_way)
     return {
@@ -640,7 +654,7 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
 
     features = copy.deepcopy(_features)
     track_line = LineString([(x, y) for (x,y,_) in track])
-    features["intersection_angle"] =                    float(get_intersection_angle(entry_way, exit_line))
+    features["intersection_angle"] =                    float(get_intersection_angle(entry_line, exit_line))
     features["maxspeed_entry"] =                        float(get_maxspeed(entry_way))
     features["maxspeed_exit"] =                         float(get_maxspeed(exit_way))
     features["oneway_entry"] =                          convert_boolean(get_oneway(entry_way))
@@ -648,14 +662,14 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     lane_distance_entry_exact, lane_distance_exit_exact = get_lane_distance_exact(curve_secant, track_line)
     features["lane_distance_entry_exact"] =             float(lane_distance_entry_exact)
     features["lane_distance_exit_exact"] =              float(lane_distance_exit_exact)
-    lane_distance_entry_lane_center, lane_distance_exit_lane_center = get_lane_distance_lane_center(entry_way, exit_line, curve_secant)
+    lane_distance_entry_lane_center, lane_distance_exit_lane_center = get_lane_distance_lane_center(entry_line, exit_line, curve_secant)
     features["lane_distance_entry_lane_center"] =       lane_distance_entry_lane_center
     features["lane_distance_exit_lane_center"] =        lane_distance_exit_lane_center
-    features["lane_distance_entry_projected_normal"] =  float(get_lane_distance_projected_normal(entry_way, entry_way.length - INT_DIST, track_line))
+    features["lane_distance_entry_projected_normal"] =  float(get_lane_distance_projected_normal(entry_line, entry_line.length - INT_DIST, track_line))
     features["lane_distance_exit_projected_normal"] =   float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
-    features["curvature_entry"] =                       float(get_line_curvature(get_reversed_line(entry_way)))
+    features["curvature_entry"] =                       float(get_line_curvature(get_reversed_line(entry_line)))
     features["curvature_exit"] =                        float(get_line_curvature(get_reversed_line(exit_line)))
-    vehicle_speed_entry = get_vehicle_speed(entry_way, entry_way.length - INT_DIST, track)
+    vehicle_speed_entry = get_vehicle_speed(entry_line, entry_line.length - INT_DIST, track)
     vehicle_speed_exit = get_vehicle_speed(exit_line, INT_DIST, track)
     features["vehicle_speed_entry"] =                   float(vehicle_speed_entry)
     features["vehicle_speed_exit"] =                    float(vehicle_speed_exit)
@@ -719,7 +733,8 @@ if __name__ == "__main__":
             sample['pickled_filename'] = fn
             samples.append(sample)
             # plot_helper.plot_intersection(sample)
-        except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError) as e:
+        except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError, SampleTaggingError) as e:
+        # except (SampleError, MaxspeedMissingError, NoIntersectionError) as e:
             print '################'
             print '################'
             print e
