@@ -230,6 +230,7 @@ def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False
             flattened_results[algo]['predictions'].extend(result[algo]['predictions'])
             flattened_results[algo]['mse'].extend(result[algo]['mse'])
     output_formatted_result(flattened_results)
+    return flattened_results
 
 def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, features, min_num_features=4, raise_feature_num=False, cross_validation=False):
     """Test the prediction quality of all possible combinations of features with
