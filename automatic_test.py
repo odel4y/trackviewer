@@ -231,7 +231,7 @@ def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False
             flattened_results[algo]['mse'].extend(result[algo]['mse'])
     output_formatted_result(flattened_results)
 
-def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, features, min_num_features=4, cross_validation=False):
+def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, features, min_num_features=4, raise_feature_num=False, cross_validation=False):
     """Test the prediction quality of all possible combinations of features with
     a minimum number of features with a certain Algorithm class. Cross validation is possible"""
     feature_sets = []               # Contains all the possible combinations of features with a minimum number of them
@@ -241,8 +241,13 @@ def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, f
     if not cross_validation:
         train_sample_sets = [train_sample_sets]
         test_sample_sets = [test_sample_sets]
+    # Determine upper limit of feature number
+    if raise_feature_num:
+        max_num_features = len(features)
+    else:
+        max_num_features = min_num_features + 1
     # Build the possible feature combinations
-    for num_features in range(min_num_features, len(features)):
+    for num_features in range(min_num_features, max_num_features):
         it = itertools.combinations(features, num_features)
         it_list = list(it)
         feature_sets.extend(it_list)
