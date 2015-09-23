@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #coding:utf-8
-# Systematic test of feature quality with RandomForestRegressor
+# Test and plot of probabilistic prediction
 import sys
 sys.path.append('../')
 import automatic_test
