@@ -7,6 +7,7 @@ data/prepared_data
 data/models
 data/training_data
 other/
+tests/results
 *~
 *.glade~
 *.py~
