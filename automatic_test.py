@@ -51,13 +51,14 @@ def get_partitioned_samples(samples, train_ratio):
     test_samples = [samples[i] for i in test_indices]
     return train_samples, test_samples
 
-def get_cross_validation_samples(samples, train_ratio, number):
+def get_cross_validation_samples(samples, train_ratio, number, randomized=False):
     """Get several randomized train and test sets for cross validation"""
     sample_count = len(samples)
     print "Total number of samples:", sample_count
     train_sample_count = int(round(sample_count * train_ratio))
     indices = range(sample_count)
-    random.shuffle(indices)
+    if randomized == True:
+        random.shuffle(indices)
     test_sample_count = sample_count - train_sample_count
     train_samples = []
     test_samples = []
