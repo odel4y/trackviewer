@@ -10,6 +10,7 @@ import sklearn.preprocessing
 import random
 import pickle
 import itertools
+import numpy as np
 from plot_helper import plot_intersection, plot_graph
 
 class PredictionAlgorithm(object):
@@ -51,7 +52,7 @@ def get_partitioned_samples(samples, train_ratio):
     return train_samples, test_samples
 
 def get_cross_validation_samples(samples, train_ratio, number):
-    """Get several non-overlapping randomized train and test sets for cross validation"""
+    """Get several randomized train and test sets for cross validation"""
     sample_count = len(samples)
     print "Total number of samples:", sample_count
     train_sample_count = int(round(sample_count * train_ratio))
@@ -194,7 +195,8 @@ def get_result_statistics(results):
     for algo, result in results.iteritems():
         result_statistics[algo] =   {
                                         'cumulated_mse': sum(result['mse']),
-                                        'average_mse': sum(result['mse']) / len(result['mse']),
+                                        'average_mse': np.mean(result['mse']),
+                                        'std_mse': np.std(result['mse']),
                                         'min_mse': min(result['mse']),
                                         'max_mse': max(result['mse'])
                                     }
@@ -207,10 +209,10 @@ def output_formatted_result(results, output="console"):
             print 'Test with algorithm:', algo.get_name()
             if algo.get_description() != '':
                 print 'Description:', algo.get_description()
-            print 'Cumulated MSE:', rs['cumulated_mse']
-            print 'Average MSE:', rs['average_mse']
-            print 'Minimum MSE:', rs['min_mse']
-            print 'Maximum MSE:', rs['max_mse']
+            print 'Average MSE:\t%.2f +/- %.2f' % (rs['average_mse'], rs['std_mse'])
+            print 'Cumulated MSE:\t%.2f' % rs['cumulated_mse']
+            print 'Minimum MSE:\t%.2f' % rs['min_mse']
+            print 'Maximum MSE:\t%.2f' % rs['max_mse']
 
 def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False):
     """General prediction quality test for algorithms with the option of cross validation"""
