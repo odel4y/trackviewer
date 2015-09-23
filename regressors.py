@@ -13,19 +13,20 @@ def filter_feature_matrix(X, features):
     return X_new
 
 class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
-    def __init__(self, features):
+    def __init__(self, features, n_estimators=10):
         self.name = 'Random Forest Regressor (Scikit)'
         for f in features:
             if f not in extract_features._feature_types:
                 raise NotImplementedError("Random Forest Algorithm: Feature %s is not available" % f)
         self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
         self.features = features
+        self.n_estimators = n_estimators
 
     def train(self, samples):
         X, y = extract_features.get_matrices_from_samples(samples)
         X = filter_feature_matrix(X, self.features)
         print 'Training regressor with %d samples...' % (len(X))
-        self.regressor = sklearn.ensemble.RandomForestRegressor()
+        self.regressor = sklearn.ensemble.RandomForestRegressor(n_estimators=self.n_estimators)
         self.regressor.fit(X, y)
 
     def predict(self, sample):
@@ -71,7 +72,7 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
         X = filter_feature_matrix(X, self.features)
         X = np.tile(X, (len(self.angle_steps), 1))
         X = np.column_stack((X, self.angle_steps))
-        
+
         y_pred = self.classifier.predict_proba(X)
 
         # Pad the probability array with zero columns for disregarded classes
