@@ -36,7 +36,8 @@ _feature_types = [
     "bicycle_designated_exit",                  # Is there a designated bicycle way in the exit street?
     "lane_count_entry",                         # Total number of lanes in entry way
     "lane_count_exit",                          # Total number of lanes in exit way
-    "has_right_of_way"                          # Does the vehicle with the respective manoeuver have right of way at the intersection?
+    "has_right_of_way",                         # Does the vehicle with the respective manoeuver have right of way at the intersection?
+    "curve_secant_dist"                         # Shortest distance from curve secant to intersection center
 ]
 _features = {name: None for name in _feature_types}
 
@@ -328,6 +329,11 @@ def get_lane_count(way):
         else:
             print "Guessing 2 lanes"
             return 2
+
+def get_curve_secant_dist(entry_line, curve_secant):
+    """Calculate shortest distance from curve secant to intersection center"""
+    intersection_center_p = entry_line.interpolate(1.0, normalized=True)
+    return curve_secant.distance(intersection_center_p)
 
 def way_has_priority_by_tags(way):
     """Determine if a certain way is prioritized by its tags"""
@@ -678,6 +684,7 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     features["lane_count_entry"] =                      float(get_lane_count(entry_way))
     features["lane_count_exit"] =                       float(get_lane_count(exit_way))
     features["has_right_of_way"] =                      convert_boolean(get_has_right_of_way(ways, way_lines))
+    features["curve_secant_dist"] =                     float(get_curve_secant_dist(entry_line, curve_secant))
     label = copy.deepcopy(_label)
     radii = sample_line(curve_secant, track_line, features["intersection_angle"])
     label["radii"] = radii
