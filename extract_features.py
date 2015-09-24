@@ -279,20 +279,32 @@ def get_intersection_angle(entry_line, exit_line):
     exit_v = np.array(exit_line.coords[1]) - np.array(exit_line.coords[0])
     return get_vec_angle(entry_v, exit_v)
 
+def mph_to_kmh(v):
+    return 1.609344 * v
+
 def get_maxspeed(way):
     """Get the tagged maxspeed for a way. If no maxspeed is
     tagged try to guess it from the highway tag or adjacent ways"""
     if "maxspeed" in way["tags"]:
-        return float(way["tags"]["maxspeed"])
+        try:
+            return float(way["tags"]["maxspeed"])
+        except ValueError:
+            # Maxspeed is formatted as a string
+            # Guess format:
+            args = way["tags"]["maxspeed"].split(' ')
+            if args[1] == 'mph':
+                return mph_to_kmh(float(args[0]))
+            elif args[1] == 'kmh':
+                return float(args[0])
     else:
         # If no tag maxspeed is found try to guess it
         way_name = way["tags"]["name"]
         way_name = way_name.encode('ascii', 'ignore')
-        if way["tags"]["highway"] in ["primary", "secondary"]:
+        if way["tags"]["highway"] in ["primary", "secondary", "tertiary"]:
             # It is a larger street so 50km/h as maxspeed is assumable
             print 'Assuming maxspeed 50km/h for %s (ID: %d) (highway=%s)' % (way_name, way["id"], way["tags"]["highway"])
             return 50.0
-        elif way["tags"]["highway"] in ["residential"]:
+        elif way["tags"]["highway"] in ["residential", "unclassified"]:
             print 'Assuming maxspeed 30km/h for %s (ID: %d) (highway=%s)' % (way_name, way["id"], way["tags"]["highway"])
             return 30.0
         else:
