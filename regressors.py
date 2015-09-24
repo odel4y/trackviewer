@@ -25,7 +25,6 @@ class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
     def train(self, samples):
         X, y = extract_features.get_matrices_from_samples(samples)
         X = filter_feature_matrix(X, self.features)
-        print 'Training regressor with %d samples...' % (len(X))
         self.regressor = sklearn.ensemble.RandomForestRegressor(n_estimators=self.n_estimators)
         self.regressor.fit(X, y)
 

@@ -37,14 +37,15 @@ def normalize_features(samples):
     X = sklearn.preprocessing.normalize(X, axis=1, copy=False)
     return get_samples_from_matrices(X, y, samples)
 
-def get_partitioned_samples(samples, train_ratio):
+def get_partitioned_samples(samples, train_ratio, randomized=False):
     """Randomize the given samples and partition them in train and test
     samples using the train_ratio"""
     sample_count = len(samples)
     print 'Total number of samples:', sample_count
     train_sample_count = int(round(sample_count * train_ratio))
     indices = range(sample_count)
-    random.shuffle(indices)
+    if randomized:
+        random.shuffle(indices)
     train_indices = indices[:train_sample_count]
     test_indices = indices[train_sample_count:]
     train_samples = [samples[i] for i in train_indices]
@@ -219,8 +220,13 @@ def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False
     """General prediction quality test for algorithms with the option of cross validation"""
     results = []
     if not cross_validation:
+        print "Test samples: %d; Train samples: %d" % (len(train_sample_sets), len(test_sample_sets))
         train_sample_sets = [train_sample_sets]
         test_sample_sets = [test_sample_sets]
+    else:
+        print "Cross validation with %d sets" % len(train_sample_sets)
+        print "Test samples: %d; Train samples: %d" % (len(train_sample_sets[0]), len(test_sample_sets[0]))
+
     for train_samples, test_samples in zip(train_sample_sets, test_sample_sets):
         train(algorithms, train_samples)
         results.append(predict(algorithms, test_samples))
