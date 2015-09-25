@@ -89,3 +89,24 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
     def bin_to_continuous(self, v):
         half_bin_height = (self.max_radius - self.min_radius) / self.bin_num / 2
         return self.min_radius + (self.max_radius - self.min_radius) * (v / self.bin_num) + half_bin_height
+
+class ExtraTreesAlgorithm(automatic_test.PredictionAlgorithm):
+    def __init__(self, features, n_estimators=10):
+        self.name = 'Extra Trees Regressor (Scikit)'
+        for f in features:
+            if f not in extract_features._feature_types:
+                raise NotImplementedError("Random Forest Algorithm: Feature %s is not available" % f)
+        self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
+        self.features = features
+        self.n_estimators = n_estimators
+
+    def train(self, samples):
+        X, y = extract_features.get_matrices_from_samples(samples)
+        X = filter_feature_matrix(X, self.features)
+        self.regressor = sklearn.ensemble.RandomForestRegressor(n_estimators=self.n_estimators)
+        self.regressor.fit(X, y)
+
+    def predict(self, sample):
+        X, _ = extract_features.get_matrices_from_samples([sample])
+        X = filter_feature_matrix(X, self.features)
+        return self.regressor.predict(X)[0]
