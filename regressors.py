@@ -4,6 +4,8 @@ from __future__ import division
 import numpy as np
 import sklearn.preprocessing
 import sklearn.ensemble
+from sklearn.ensemble.base import _partition_estimators
+from sklearn.externals.joblib import Parallel, delayed
 import automatic_test
 import extract_features
 
@@ -12,12 +14,16 @@ def filter_feature_matrix(X, features):
     X_new = X[:,feature_indices]
     return X_new
 
+def _check_feature_availability(features):
+    for f in features:
+        if f not in extract_features._feature_types:
+            raise NotImplementedError("Feature %s is not available" % f)
+
 class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
     def __init__(self, features, n_estimators=10):
         self.name = 'Random Forest Regressor (Scikit)'
-        for f in features:
-            if f not in extract_features._feature_types:
-                raise NotImplementedError("Random Forest Algorithm: Feature %s is not available" % f)
+        _check_feature_availability(features)
+
         self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
         self.features = features
         self.n_estimators = n_estimators
@@ -34,11 +40,12 @@ class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
         return self.regressor.predict(X)[0]
 
 class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
-    def __init__(self, features, bin_num, min_radius, max_radius):
+    def __init__(self, features, bin_num, min_radius, max_radius, n_estimators):
         self.name = 'Random Forest Classifier (Scikit)'
+        _check_feature_availability(features)
         self.features = features
         self.bin_num = bin_num
-        self.classifier = sklearn.ensemble.RandomForestClassifier()
+        self.classifier = sklearn.ensemble.RandomForestClassifier(n_estimators=n_estimators)
 
     def train(self, samples):
         X, y = extract_features.get_matrices_from_samples(samples)
@@ -93,9 +100,7 @@ class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
 class ExtraTreesAlgorithm(automatic_test.PredictionAlgorithm):
     def __init__(self, features, n_estimators=10):
         self.name = 'Extra Trees Regressor (Scikit)'
-        for f in features:
-            if f not in extract_features._feature_types:
-                raise NotImplementedError("Random Forest Algorithm: Feature %s is not available" % f)
+        _check_feature_availability(features)
         self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
         self.features = features
         self.n_estimators = n_estimators
@@ -110,3 +115,27 @@ class ExtraTreesAlgorithm(automatic_test.PredictionAlgorithm):
         X, _ = extract_features.get_matrices_from_samples([sample])
         X = filter_feature_matrix(X, self.features)
         return self.regressor.predict(X)[0]
+
+class RandomForestExtendedAlgorithm(RandomForestAlgorithm):
+    def __init__(self, features, n_estimators=10):
+        super(RandomForestExtendedAlgorithm, self).__init__(features, n_estimators)
+        self.name = 'Random Forest Regressor (Scikit) with added all tree predictions output'
+
+    def predict_all_trees(self, sample):
+        """Get the prediction of every estimator separated"""
+        X, _ = extract_features.get_matrices_from_samples([sample])
+        X = filter_feature_matrix(X, self.features)
+        # Most of the code is directly copied from Scikit
+        # Check data
+        X = self.regressor._validate_X_predict(X)
+
+        # Assign chunk of trees to jobs
+        n_jobs, _, _ = _partition_estimators(self.regressor.n_estimators, self.regressor.n_jobs)
+
+        # Parallel loop
+        all_y_hat = Parallel(n_jobs=n_jobs, verbose=self.regressor.verbose,
+                             backend="threading")(
+            delayed(_parallel_helper)(e, 'predict', X, check_input=False)
+            for e in self.regressor.estimators_)
+
+        return all_y_hat
