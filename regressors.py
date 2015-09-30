@@ -121,7 +121,7 @@ class RandomForestExtendedAlgorithm(RandomForestAlgorithm):
         super(RandomForestExtendedAlgorithm, self).__init__(features, n_estimators)
         self.name = 'Random Forest Regressor (Scikit) with added all tree predictions output'
 
-    def predict_all_trees(self, sample):
+    def predict_all_estimators(self, sample):
         """Get the prediction of every estimator separated"""
         X, _ = extract_features.get_matrices_from_samples([sample])
         X = filter_feature_matrix(X, self.features)
