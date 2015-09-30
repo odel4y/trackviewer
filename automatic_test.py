@@ -112,6 +112,27 @@ def predict_proba(algorithms, test_samples):
             results_proba[algo]['max_radius'] = algo.max_radius
     return results_proba
 
+def predict_all_estimators(algorithms, test_samples):
+    """Get an all estimators prediction from each algorithm"""
+    results = {}
+    for algo in algorithms:
+        # Initialize result structure
+        results[algo] = {
+                            'mse': [],
+                            'predictions': [],
+                            'predictions_all_estimators': []
+                        }
+        for s in test_samples:
+            y_true = s['y']
+            y_pred = algo.predict(s)
+            mse = mean_squared_error(y_true, y_pred)
+            all_estimators_pred = algo.predict_all_estimators(s)
+            print all_estimators_pred
+            results[algo]['predictions'].append(y_pred)
+            results[algo]['mse'].append(mse)
+            results[algo]['predictions_all_estimators'].append(all_estimators_pred)
+    return results
+
 def show_intersection_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all", orientation="preserve"):
     print "Show intersection plot..."
     if which_algorithms == "all":
