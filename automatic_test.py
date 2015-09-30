@@ -220,12 +220,12 @@ def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False
     """General prediction quality test for algorithms with the option of cross validation"""
     results = []
     if not cross_validation:
-        print "Test samples: %d; Train samples: %d" % (len(train_sample_sets), len(test_sample_sets))
+        print "Train samples: %d; Test samples: %d" % (len(train_sample_sets), len(test_sample_sets))
         train_sample_sets = [train_sample_sets]
         test_sample_sets = [test_sample_sets]
     else:
         print "Cross validation with %d sets" % len(train_sample_sets)
-        print "Test samples: %d; Train samples: %d" % (len(train_sample_sets[0]), len(test_sample_sets[0]))
+        print "Train samples: %d; Test samples: %d" % (len(train_sample_sets[0]), len(test_sample_sets[0]))
 
     for train_samples, test_samples in zip(train_sample_sets, test_sample_sets):
         train(algorithms, train_samples)
