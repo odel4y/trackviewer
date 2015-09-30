@@ -21,7 +21,7 @@ feature_list = [
     "vehicle_speed_exit"                        # Measured vehicle speed on exit way at INT_DIST
 ]
 rf_algo = regressors.RandomForestAlgorithm(feature_list)
-rfc_algo = regressors.RFClassificationAlgorithm(feature_list, bin_num=20, min_radius=6.0, max_radius=28.0)
+rfc_algo = regressors.RFClassificationAlgorithm(feature_list, bin_num=20, min_radius=6.0, max_radius=28.0, n_estimators=80)
 #ispline_algo = reference_implementations.InterpolatingSplineAlgorithm()
 algos = [rf_algo, rfc_algo]
 samples = automatic_test.load_samples('../data/training_data/samples.pickle')

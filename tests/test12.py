@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #coding:utf-8
-# Testing the usefulness of curve_secant_dist feature
+# Comparing random forest and Extra Trees algorithm
 import sys
 sys.path.append('../')
 import automatic_test
