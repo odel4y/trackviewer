@@ -4,8 +4,13 @@ from __future__ import division
 import numpy as np
 import sklearn.preprocessing
 import sklearn.ensemble
-from sklearn.ensemble.base import _partition_estimators
 from sklearn.externals.joblib import Parallel, delayed
+from sklearn.tree._tree import DTYPE, DOUBLE
+from sklearn.utils import check_random_state, check_array, compute_sample_weight
+from sklearn.utils.validation import DataConversionWarning, check_is_fitted
+from sklearn.ensemble.base import BaseEnsemble, _partition_estimators
+from scipy.sparse import issparse
+from sklearn.ensemble.forest import _parallel_helper
 import automatic_test
 import extract_features
 
@@ -127,10 +132,18 @@ class RandomForestExtendedAlgorithm(RandomForestAlgorithm):
         X = filter_feature_matrix(X, self.features)
         # Most of the code is directly copied from Scikit
         # Check data
-        X = self.regressor._validate_X_predict(X)
+        check_is_fitted(self.regressor, 'n_outputs_')
+
+        # Check data
+        X = check_array(X, dtype=DTYPE, accept_sparse="csr")
+        if issparse(X) and (X.indices.dtype != np.intc or
+                            X.indptr.dtype != np.intc):
+            raise ValueError("No support for np.int64 index based "
+                             "sparse matrices")
 
         # Assign chunk of trees to jobs
-        n_jobs, _, _ = _partition_estimators(self.regressor.n_estimators, self.regressor.n_jobs)
+        n_jobs, n_trees, starts = _partition_estimators(self.regressor.n_estimators,
+                                                        self.regressor.n_jobs)
 
         # Parallel loop
         all_y_hat = Parallel(n_jobs=n_jobs, verbose=self.regressor.verbose,
