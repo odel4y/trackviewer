@@ -114,6 +114,7 @@ def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[],
     plot_arrows_along_line('r', track_line)
 
     colors = get_distributed_colors(len(predicted_radii))
+    if labels==[]: labels = [""]*len(predicted_radii)
     for radii, color, label in zip(predicted_radii, colors, labels):
         line = get_predicted_line(curve_secant, radii, intersection_angle)
         handles.append( plot_line(color, line, label) )
