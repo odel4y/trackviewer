@@ -44,6 +44,33 @@ class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
         X = filter_feature_matrix(X, self.features)
         return self.regressor.predict(X)[0]
 
+    def predict_all_estimators(self, sample):
+        """Get the prediction of every estimator separated"""
+        X, _ = extract_features.get_matrices_from_samples([sample])
+        X = filter_feature_matrix(X, self.features)
+        # Most of the code is directly copied from Scikit
+        # Check data
+        check_is_fitted(self.regressor, 'n_outputs_')
+
+        # Check data
+        X = check_array(X, dtype=DTYPE, accept_sparse="csr")
+        if issparse(X) and (X.indices.dtype != np.intc or
+                            X.indptr.dtype != np.intc):
+            raise ValueError("No support for np.int64 index based "
+                             "sparse matrices")
+
+        # Assign chunk of trees to jobs
+        n_jobs, n_trees, starts = _partition_estimators(self.regressor.n_estimators,
+                                                        self.regressor.n_jobs)
+
+        # Parallel loop
+        all_y_hat = Parallel(n_jobs=n_jobs, verbose=self.regressor.verbose,
+                             backend="threading")(
+            delayed(_parallel_helper)(e, 'predict', X, check_input=False)
+            for e in self.regressor.estimators_)
+
+        return all_y_hat
+
 class RFClassificationAlgorithm(automatic_test.PredictionAlgorithm):
     def __init__(self, features, bin_num, min_radius, max_radius, n_estimators):
         self.name = 'Random Forest Classifier (Scikit)'
@@ -120,35 +147,3 @@ class ExtraTreesAlgorithm(automatic_test.PredictionAlgorithm):
         X, _ = extract_features.get_matrices_from_samples([sample])
         X = filter_feature_matrix(X, self.features)
         return self.regressor.predict(X)[0]
-
-class RandomForestExtendedAlgorithm(RandomForestAlgorithm):
-    def __init__(self, features, n_estimators=10):
-        super(RandomForestExtendedAlgorithm, self).__init__(features, n_estimators)
-        self.name = 'Random Forest Regressor (Scikit) with added all tree predictions output'
-
-    def predict_all_estimators(self, sample):
-        """Get the prediction of every estimator separated"""
-        X, _ = extract_features.get_matrices_from_samples([sample])
-        X = filter_feature_matrix(X, self.features)
-        # Most of the code is directly copied from Scikit
-        # Check data
-        check_is_fitted(self.regressor, 'n_outputs_')
-
-        # Check data
-        X = check_array(X, dtype=DTYPE, accept_sparse="csr")
-        if issparse(X) and (X.indices.dtype != np.intc or
-                            X.indptr.dtype != np.intc):
-            raise ValueError("No support for np.int64 index based "
-                             "sparse matrices")
-
-        # Assign chunk of trees to jobs
-        n_jobs, n_trees, starts = _partition_estimators(self.regressor.n_estimators,
-                                                        self.regressor.n_jobs)
-
-        # Parallel loop
-        all_y_hat = Parallel(n_jobs=n_jobs, verbose=self.regressor.verbose,
-                             backend="threading")(
-            delayed(_parallel_helper)(e, 'predict', X, check_input=False)
-            for e in self.regressor.estimators_)
-
-        return all_y_hat
