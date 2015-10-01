@@ -147,3 +147,38 @@ class ExtraTreesAlgorithm(automatic_test.PredictionAlgorithm):
         X, _ = extract_features.get_matrices_from_samples([sample])
         X = filter_feature_matrix(X, self.features)
         return self.regressor.predict(X)[0]
+
+class RandomForestSeparatedDirectionsAlgorithm(automatic_test.PredictionAlgorithm):
+    """Use the ordinary RandomForestRegressor but train separate predictors for different intersection angles"""
+    def __init__(self, features, n_estimators=10):
+        self.name = 'Random Forest Regressor (Scikit) with separate predictors for different intersection angles'
+        _check_feature_availability(features)
+
+        self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
+        self.features = features
+        self.n_estimators = n_estimators
+
+    def _is_left_turn(self, sample):
+        return sample['X'][extract_features._feature_types.index('intersection_angle')] >= 0.0
+
+    def train(self, samples):
+        samples_l = [s for s in samples if self._is_left_turn(s)]
+        samples_r = [s for s in samples if not self._is_left_turn(s)]
+
+        X_l, y_l = extract_features.get_matrices_from_samples(samples_l)
+        X_r, y_r = extract_features.get_matrices_from_samples(samples_r)
+        X_l = filter_feature_matrix(X_l, self.features)
+        X_r = filter_feature_matrix(X_r, self.features)
+
+        self.regressor_l = sklearn.ensemble.RandomForestRegressor(n_estimators=int(self.n_estimators/2))
+        self.regressor_r = sklearn.ensemble.RandomForestRegressor(n_estimators=int(self.n_estimators/2))
+        self.regressor_l.fit(X_l, y_l)
+        self.regressor_r.fit(X_r, y_r)
+
+    def predict(self, sample):
+        X, _ = extract_features.get_matrices_from_samples([sample])
+        X = filter_feature_matrix(X, self.features)
+        if self._is_left_turn(sample):
+            return self.regressor_l.predict(X)[0]
+        else:
+            return self.regressor_r.predict(X)[0]
