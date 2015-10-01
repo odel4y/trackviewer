@@ -127,7 +127,6 @@ def predict_all_estimators(algorithms, test_samples):
             y_pred = algo.predict(s)
             mse = mean_squared_error(y_true, y_pred)
             all_estimators_pred = algo.predict_all_estimators(s)
-            print all_estimators_pred
             results[algo]['predictions'].append(y_pred)
             results[algo]['mse'].append(mse)
             results[algo]['predictions_all_estimators'].append(all_estimators_pred)
