@@ -42,7 +42,8 @@ _feature_types = [
 _features = {name: None for name in _feature_types}
 
 _label = {
-    "radii": None
+    "radii": None,              # Radii measured from middle of curve_secant
+    "distances": None           # Distance measured from way_line along half_angle_vec
 }
 
 _sample = {
@@ -52,9 +53,14 @@ _sample = {
         'curve_secant': None,
         'track_line': None
     },
-    'X': None,                  # Feature vector
-    'y': None,                  # Label vector
-    'pickled_filename': None    # Filename of prepared pickle file for later lookup
+    'X': None,                          # Feature vector
+    'y': None,                          # Label vector with selected method
+    'label': {
+        'y_radii': None,                # Label vector with sampled data measured as polar coordinates from middle of curve_secant
+        'y_distances': None,            # Label vector with sampled data along half_angle_vec
+        'selected_method': 'y_radii'    # Selected label method
+    },
+    'pickled_filename': None            # Filename of prepared pickle file for later lookup
 }
 
 _regarded_highways = ["motorway", "trunk", "primary", "secondary", "tertiary",
@@ -469,7 +475,7 @@ def join_lines(line1, line2):
     """Join two lines that touch at the end of line1 and at beginning of line2"""
     if line1.coords[-1] != line2.coords[0]:
         raise Exception("Lines do not touch")
-    coords = line1.coords[:] + line2[1:]
+    coords = line1.coords[:] + line2.coords[1:]
     return LineString(coords)
 
 def extend_line(line, dist, direction="both"):
@@ -646,7 +652,7 @@ def sample_line(curve_secant, track_line, intersection_angle):
 
 def get_half_angle_vec(exit_line, intersection_angle):
     """Get the vector that is pointing at half the intersection angle between entry and exit"""
-    exit_v = np.array(exit_line.coords[1]) - np.array(exit_line.coords[0]))
+    exit_v = np.array(exit_line.coords[1]) - np.array(exit_line.coords[0])
     half_angle = (np.pi - np.abs(intersection_angle)) / 2.0
     half_angle_vec = rotate_xy(exit_v, np.sign(intersection_angle) * half_angle, (0,0))
     return half_angle_vec
@@ -664,9 +670,9 @@ def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, trac
     for ld in line_dists:
         way_line_p = way_line.interpolate(ld)
         # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
-        pos_ruler_coords = [way_line_p.coords[:], tuple(np.array(way_line_p.coords[:]) + half_angle_vec)]
+        pos_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) + half_angle_vec)]
         pos_ruler = extend_line(LineString(pos_ruler_coords), 100.0, direction="forward")
-        neg_ruler_coords = [way_line_p.coords[:], tuple(np.array(way_line_p.coords[:]) - half_angle_vec)]
+        neg_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) - half_angle_vec)]
         neg_ruler = extend_line(LineString(neg_ruler_coords), 100.0, direction="forward")
         d_p = find_closest_intersection(pos_ruler, way_line_p, track_line)
         nd_p = find_closest_intersection(neg_ruler, way_line_p, track_line)
@@ -701,7 +707,7 @@ def get_predicted_line_along_half_angle_vec(entry_line, exit_line, half_angle_ve
     for ld, pd in zip(line_dists, d_pred):
         way_line_p = way_line.interpolate(ld)
         # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
-        pos_ruler_coords = [way_line_p.coords[:], tuple(np.array(way_line_p.coords[:]) + half_angle_vec)]
+        pos_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) + half_angle_vec)]
         pos_ruler = extend_line(LineString(pos_ruler_coords), 100.0, direction="forward")
         pred_line_points.append(extended_interpolate(pos_ruler, pd))
     return LineString(pred_line_points)
@@ -744,12 +750,20 @@ def get_cartesian_from_polar(R, Phi, curve_secant, intersection_angle):
 
     return (X, Y)
 
-def get_predicted_line(curve_secant, radii_pred, intersection_angle):
+def get_predicted_line_radii(curve_secant, radii_pred, intersection_angle):
     """Convert a prediction to cartesian coordinates and represent it as LineString"""
     angles = np.linspace(0., np.pi, len(radii_pred))
     (X, Y) = get_cartesian_from_polar(radii_pred, angles, curve_secant, intersection_angle)
     coords = zip(list(X), list(Y))
     return LineString(coords)
+
+def get_predicted_line(sample, pred):
+    """Returns the prediction as a LineString with the chosen label method"""
+    if sample['label']['selected_method'] == 'y_radii':
+        return get_predicted_line_radii(sample['geometry']['curve_secant'], pred, sample['X'][_feature_types.index('intersection_angle')])
+    elif sample['label']['selected_method'] == 'y_distances':
+        half_angle_vec = get_half_angle_vec(sample['geometry']['exit_line'], sample['X'][_feature_types.index('intersection_angle')])
+        return get_predicted_line_along_half_angle_vec(sample['geometry']['entry_line'], sample['geometry']['exit_line'], half_angle_vec, pred)
 
 def get_osm(int_sit):
     print 'Downloading OSM...'
@@ -779,7 +793,8 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
 
     features = copy.deepcopy(_features)
     track_line = LineString([(x, y) for (x,y,_) in track])
-    features["intersection_angle"] =                    float(get_intersection_angle(entry_line, exit_line))
+    intersection_angle = float(get_intersection_angle(entry_line, exit_line))
+    features["intersection_angle"] =                    intersection_angle
     features["maxspeed_entry"] =                        float(get_maxspeed(entry_way))
     features["maxspeed_exit"] =                         float(get_maxspeed(exit_way))
     features["oneway_entry"] =                          convert_boolean(get_oneway(entry_way))
@@ -806,14 +821,20 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     features["curve_secant_dist"] =                     float(get_curve_secant_dist(entry_line, curve_secant))
     label = copy.deepcopy(_label)
     radii = sample_line(curve_secant, track_line, features["intersection_angle"])
+    half_angle_vec = get_half_angle_vec(exit_line, intersection_angle)
+    distances = sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, track_line)
     label["radii"] = radii
+    label["distances"] = distances
     return features, label
 
 def convert_to_array(features, label):
     """Convert features to a number and put them in a python list"""
     feature_list = [features[feature_name] for feature_name in _feature_types]
-    label_list = label["radii"]
-    return np.array(feature_list), np.array(label_list)
+    label_list = {
+        "radii": np.array(label["radii"]),
+        "distances": np.array(label["distances"])
+    }
+    return np.array(feature_list), label_list
 
 def get_matrices_from_samples(samples):
     """Get feature and label matrices from samples list"""
@@ -829,6 +850,13 @@ def get_samples_from_matrices(X, y, samples):
     for i, s in enumerate(samples):
         s['X'] = np.array(X[i])
         s['y'] = np.array(y[i])
+    return samples
+
+def select_label_method(samples, label_method="y_radii"):
+    """If a different label variant is needed overwrite the standard one"""
+    for sample in samples:
+        sample['y'] = sample['label'][label_method]
+        sample['label']['selected_method'] = label_method
     return samples
 
 def create_sample(int_sit, osm, pickled_filename="", output="none"):
@@ -849,7 +877,9 @@ def create_sample(int_sit, osm, pickled_filename="", output="none"):
     sample['geometry']['curve_secant'] = curve_secant
     sample['geometry']['track_line'] = track_line
     sample['X'] = feature_array
-    sample['y'] = label_array
+    sample['y'] = label_array["radii"]
+    sample['label']['y_radii'] = label_array["radii"]
+    sample['label']['y_distances'] = label_array["distances"]
     sample['pickled_filename'] = pickled_filename
 
     return sample

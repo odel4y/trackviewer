@@ -11,6 +11,7 @@ from extract_features import get_normal_to_line, extend_line, get_predicted_line
                 rotate_xy
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from shapely import affinity
+import copy
 
 def get_distributed_colors(number, colormap='Set1'):
     cmap = plt.get_cmap('Set1')
@@ -70,9 +71,10 @@ def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_a
     p = ax.pcolormesh(X, Y, prediction, cmap="Oranges")
     plt.gcf().colorbar(p)
 
-def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[], title=None, block=True, probability_map=None, orientation="preserve"):
+def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title=None, block=True, probability_map=None, orientation="preserve"):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
+    sample = copy.deepcopy(sample)
     entry_line =            sample['geometry']['entry_line']
     exit_line =             sample['geometry']['exit_line']
     curve_secant =          sample['geometry']['curve_secant']
@@ -93,10 +95,15 @@ def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[],
     phi, rot_c = rotation
     if rotation[0] != 0.:
         # Rotate all given LineStrings
+        # And update in copied sample to be used by submethods
         entry_line = affinity.rotate(entry_line, phi, origin=rot_c, use_radians=True)
+        sample['geometry']['entry_line'] = entry_line
         exit_line = affinity.rotate(exit_line, phi, origin=rot_c, use_radians=True)
+        sample['geometry']['exit_line'] = exit_line
         curve_secant = affinity.rotate(curve_secant, phi, origin=rot_c, use_radians=True)
+        sample['geometry']['curve_secant'] = curve_secant
         track_line = affinity.rotate(track_line, phi, origin=rot_c, use_radians=True)
+        sample['geometry']['track_line'] = track_line
 
     handles = []
     fig = plt.figure()
@@ -113,10 +120,10 @@ def plot_intersection(sample, predicted_radii=[], predicted_proba=[], labels=[],
     handles.append( plot_line('r', track_line, 'Measured Track') )
     plot_arrows_along_line('r', track_line)
 
-    colors = get_distributed_colors(len(predicted_radii))
-    if labels==[]: labels = [""]*len(predicted_radii)
-    for radii, color, label in zip(predicted_radii, colors, labels):
-        line = get_predicted_line(curve_secant, radii, intersection_angle)
+    colors = get_distributed_colors(len(predicted))
+    if labels==[]: labels = [""]*len(predicted)
+    for pred, color, label in zip(predicted, colors, labels):
+        line = get_predicted_line(sample, pred)
         handles.append( plot_line(color, line, label) )
     plt.legend(handles=handles)
     if title: plt.title(title)
