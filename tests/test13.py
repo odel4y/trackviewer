@@ -6,14 +6,15 @@ sys.path.append('../')
 import automatic_test
 import regressors
 import reference_implementations
-from extract_features import _feature_types
+from extract_features import _feature_types, select_label_method
 from plot_helper import plot_intersection
 
 feature_list = _feature_types
 
 rf_algo = regressors.RandomForestAlgorithm(feature_list)
-samples = automatic_test.load_samples('../data/training_data/samples_23_09_15/samples.pickle')
-samples = automatic_test.normalize_features(samples)
+samples = automatic_test.load_samples('../data/training_data/samples.pickle')
+# samples = automatic_test.normalize_features(samples)
+# select_label_method(samples, 'y_distances')
 train_samples, test_samples = automatic_test.get_partitioned_samples(samples, 0.8)
 #automatic_test.test([rf_algo], train_samples, test_samples, cross_validation=False)
 automatic_test.train([rf_algo], train_samples)
