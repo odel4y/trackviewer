@@ -12,6 +12,9 @@ from extract_features import get_normal_to_line, extend_line, get_predicted_line
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from shapely import affinity
 import copy
+from constants import SAMPLE_RESOLUTION
+import scipy.interpolate
+import scipy.stats
 
 def get_distributed_colors(number, colormap='Set1'):
     cmap = plt.get_cmap('Set1')
@@ -50,6 +53,58 @@ def plot_arrows_along_line(color, center_line):
     for i in range(1, arrow_count + 1):
         plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
 
+class RBFValley:
+    def __init__(self, X, Y, epsilon):
+        self._rbfs = []
+        for nx, ny in zip(X,Y):
+            self._rbfs.append(lambda x, y: self._rbf(x, y, nx, ny, epsilon))
+
+    def _rbf(self, x, y, nx, ny, epsilon):
+        r = np.sqrt((x-nx)**2 + (y-nx)**2)
+        return np.exp(-((epsilon*r)**2))
+
+    def __call__(self, x, y):
+        d = 0.
+        for rbfk in self._rbfs:
+            d += rbfk(x,y)
+        return d
+
+def get_heatmap_from_polar_all_predictors(predictions, curve_secant, intersection_angle):
+    # Set up the RBF Interpolator
+    angle_steps = np.linspace(0., np.pi, SAMPLE_RESOLUTION)
+    rbfPhi = []
+    rbfR = []
+    # rbfD = []
+    for pred in predictions:
+        rbfPhi.extend(list(angle_steps))
+        rbfR.extend(list(pred))
+        # rbfD.extend([1.]*len(pred))
+    # rbfi = scipy.interpolate.Rbf(rbfPhi, rbfR, rbfD)
+    # values = np.vstack([np.array(rbfPhi), np.array(rbfR)])
+    # kernel = scipy.stats.gaussian_kde(values)
+    rbfi = RBFValley(rbfPhi, rbfR, 5.0)
+
+    # Set up the grid to sample the RBF at
+    r_min = 2.0
+    r_max = 30.0
+    r_resolution = 30
+    phi_min = 0.0
+    phi_max = np.pi
+    phi_resolution = 50
+    R = np.rot90(np.tile(np.linspace(r_min, r_max, r_resolution), (phi_resolution, 1)))
+    Phi = np.tile(np.linspace(phi_min, phi_max, phi_resolution), (r_resolution, 1))
+    D = np.zeros((np.shape(Phi)[0]-1, np.shape(Phi)[1]-1))
+
+    # Sample the RBF
+    for j in range(np.shape(Phi)[0]-1):
+        for k in range(np.shape(Phi)[1]-1):
+            D[j,k] = rbfi(Phi[j,k], R[j,k])
+
+    # Transform RBF grid into XY-Space for heatmap
+    X, Y = get_cartesian_from_polar(R, Phi, curve_secant, intersection_angle)
+
+    return X, Y, D
+
 def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_angle):
     """Plot a heatmap in polar coordinates"""
     prediction =    np.flipud(np.rot90(predicted_proba['predictions_proba']))
@@ -71,7 +126,7 @@ def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_a
     p = ax.pcolormesh(X, Y, prediction, cmap="Oranges")
     plt.gcf().colorbar(p)
 
-def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title=None, block=True, probability_map=None, orientation="preserve"):
+def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], heatmap=None, title=None, block=True, probability_map=None, orientation="preserve"):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     csample = copy.deepcopy(sample)
@@ -113,8 +168,23 @@ def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title
     plt.hold(True)
     plt.axis('equal')
 
-    for proba_map in predicted_proba:
-        plot_polar_probability_heatmap(proba_map, curve_secant, intersection_angle)
+    if heatmap != None:
+        X, Y, D = heatmap
+        # Rotate if necessary
+        if rotation[0] != 0.:
+            rot_phi, rot_c = rotation
+            target_shape = np.shape(X)
+            coords = np.transpose(np.vstack((X.ravel(), Y.ravel())))
+            rot_coords = np.transpose(rotate_xy(coords, rot_phi, rot_c))
+            X = np.reshape(rot_coords[0], target_shape)
+            Y = np.reshape(rot_coords[1], target_shape)
+
+        ax = plt.gca()
+        p = ax.pcolormesh(X, Y, D, cmap="Oranges")
+        plt.gcf().colorbar(p)
+
+    # for proba_map in predicted_proba:
+    #     plot_polar_probability_heatmap(proba_map, curve_secant, intersection_angle)
 
     plot_lines('k', entry_line, exit_line, half_angle_line)
     # plot_line('m', normal_en, normal_ex)
