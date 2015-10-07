@@ -74,13 +74,13 @@ def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_a
 def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title=None, block=True, probability_map=None, orientation="preserve"):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
-    sample = copy.deepcopy(sample)
-    entry_line =            sample['geometry']['entry_line']
-    exit_line =             sample['geometry']['exit_line']
-    curve_secant =          sample['geometry']['curve_secant']
-    track_line =            sample['geometry']['track_line']
-    half_angle_line =       sample['geometry']['half_angle_line']
-    intersection_angle =    sample['X'][_feature_types.index('intersection_angle')]
+    csample = copy.deepcopy(sample)
+    entry_line =            csample['geometry']['entry_line']
+    exit_line =             csample['geometry']['exit_line']
+    curve_secant =          csample['geometry']['curve_secant']
+    track_line =            csample['geometry']['track_line']
+    half_angle_line =       csample['geometry']['half_angle_line']
+    intersection_angle =    csample['X'][_feature_types.index('intersection_angle')]
 
     rotation = (0., (0.,0.)) # rad
     if orientation == "curve-secant":
@@ -98,15 +98,15 @@ def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title
         # Rotate all given LineStrings
         # And update in copied sample to be used by submethods
         entry_line = affinity.rotate(entry_line, phi, origin=rot_c, use_radians=True)
-        sample['geometry']['entry_line'] = entry_line
+        csample['geometry']['entry_line'] = entry_line
         exit_line = affinity.rotate(exit_line, phi, origin=rot_c, use_radians=True)
-        sample['geometry']['exit_line'] = exit_line
+        csample['geometry']['exit_line'] = exit_line
         curve_secant = affinity.rotate(curve_secant, phi, origin=rot_c, use_radians=True)
-        sample['geometry']['curve_secant'] = curve_secant
+        csample['geometry']['curve_secant'] = curve_secant
         track_line = affinity.rotate(track_line, phi, origin=rot_c, use_radians=True)
-        sample['geometry']['track_line'] = track_line
+        csample['geometry']['track_line'] = track_line
         half_angle_line = affinity.rotate(half_angle_line, phi, origin=rot_c, use_radians=True)
-        sample['geometry']['half_angle_line'] = half_angle_line
+        csample['geometry']['half_angle_line'] = half_angle_line
 
     handles = []
     fig = plt.figure()
@@ -121,14 +121,15 @@ def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title
     # plot_line('g', neg_normal_en, neg_normal_ex)
     plot_line('k', curve_secant)
     handles.append( plot_line('r', track_line, 'Measured Track') )
-    handles.append( plot_line('b', get_predicted_line(sample, sample['y']), 'Measured Track Distances') )
+    # handles.append( plot_line('b', get_predicted_line(csample, csample['y']), 'Measured Track Distances') )
     plot_arrows_along_line('r', track_line)
-    plot_arrows_along_line('b', get_predicted_line(sample, sample['y']))
+    # plot_arrows_along_line('b', get_predicted_line(csample, csample['y']))
 
     colors = get_distributed_colors(len(predicted))
     if labels==[]: labels = [""]*len(predicted)
     for pred, color, label in zip(predicted, colors, labels):
-        line = get_predicted_line(sample, pred)
+        print sample['y'] - pred
+        line = get_predicted_line(csample, pred)
         handles.append( plot_line(color, line, label) )
     plt.legend(handles=handles)
     if title: plt.title(title)

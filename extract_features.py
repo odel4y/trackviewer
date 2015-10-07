@@ -698,7 +698,6 @@ def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, trac
             sampled_dist.append(ndist)
         else:
             raise SampleError("Track failed to be sampled along half_angle_vec")
-    print sampled_dist
     return sampled_dist
 
 def get_predicted_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, d_pred):
@@ -890,6 +889,7 @@ def create_sample(int_sit, osm, pickled_filename="", output="none"):
     sample['y'] = label_array["radii"]
     sample['label']['y_radii'] = label_array["radii"]
     sample['label']['y_distances'] = label_array["distances"]
+    sample['label']['selected_method'] = "y_radii"
     sample['pickled_filename'] = pickled_filename
 
     return sample
