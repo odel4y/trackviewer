@@ -51,7 +51,8 @@ _sample = {
         'entry_line': None,
         'exit_line': None,
         'curve_secant': None,
-        'track_line': None
+        'track_line': None,
+        'half_angle_line': None
     },
     'X': None,                          # Feature vector
     'y': None,                          # Label vector with selected method
@@ -483,12 +484,14 @@ def extend_line(line, dist, direction="both"):
     start_c, end_c = [], []
     if direction in ["both", "backward"]:
         # coordinate of extending line segment at start
-        start_slope = np.array(line.coords[0]) - np.array(line.coords[1])
-        start_c = [tuple(start_slope * dist + np.array(line.coords[0]))]
+        slope_vec = np.array(line.coords[0]) - np.array(line.coords[1])
+        norm_slope_vec = slope_vec / np.linalg.norm(slope_vec)
+        start_c = [tuple(norm_slope_vec * dist + np.array(line.coords[0]))]
     elif direction in ["both", "forward"]:
         # coordinate of extending line segment at end
-        end_slope = np.array(line.coords[-1]) - np.array(line.coords[-2])
-        end_c = [tuple(end_slope * dist + np.array(line.coords[-1]))]
+        slope_vec = np.array(line.coords[-1]) - np.array(line.coords[-2])
+        norm_slope_vec = slope_vec / np.linalg.norm(slope_vec)
+        end_c = [tuple(norm_slope_vec * dist + np.array(line.coords[-1]))]
         # new LineString is composed of new start and end parts plus the existing one
     else:
         raise ValueError("Illegal argument for direction in extend_line")
@@ -506,7 +509,7 @@ def extended_interpolate(line, dist, normalized=False):
     elif dist < 0.0:
         exceeding_dist = abs(dist)
         extended_line = extend_line(line, exceeding_dist, direction="backward")
-        return extended_line.interpolate(exceeding_dist)
+        return extended_line.interpolate(0.)
     else:
         return line.interpolate(dist)
 
@@ -681,17 +684,21 @@ def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, trac
         else:
             pdist = None
         if nd_p != None:
-            ndist = way_line_p.distance(nd_p)
+            ndist = - way_line_p.distance(nd_p)
         else:
             ndist = None
         if pdist != None and ndist != None:
-            sampled_dist.append(np.amin([pdist, ndist]))
+            if pdist < np.abs(ndist):
+                sampled_dist.append(pdist)
+            else:
+                sampled_dist.append(ndist)
         elif pdist != None:
             sampled_dist.append(pdist)
         elif ndist != None:
             sampled_dist.append(ndist)
         else:
             raise SampleError("Track failed to be sampled along half_angle_vec")
+    print sampled_dist
     return sampled_dist
 
 def get_predicted_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, d_pred):
@@ -708,7 +715,7 @@ def get_predicted_line_along_half_angle_vec(entry_line, exit_line, half_angle_ve
         way_line_p = way_line.interpolate(ld)
         # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
         pos_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) + half_angle_vec)]
-        pos_ruler = extend_line(LineString(pos_ruler_coords), 100.0, direction="forward")
+        pos_ruler = LineString(pos_ruler_coords)
         pred_line_points.append(extended_interpolate(pos_ruler, pd))
     return LineString(pred_line_points)
 
@@ -876,6 +883,9 @@ def create_sample(int_sit, osm, pickled_filename="", output="none"):
     sample['geometry']['exit_line'] = way_lines["exit_way"]
     sample['geometry']['curve_secant'] = curve_secant
     sample['geometry']['track_line'] = track_line
+    half_angle_vec = get_half_angle_vec(way_lines["exit_way"], features["intersection_angle"])
+    half_angle_line = LineString([way_lines["exit_way"].coords[0], tuple(np.array(way_lines["exit_way"].coords[0]) + half_angle_vec)])
+    sample['geometry']['half_angle_line'] = half_angle_line
     sample['X'] = feature_array
     sample['y'] = label_array["radii"]
     sample['label']['y_radii'] = label_array["radii"]

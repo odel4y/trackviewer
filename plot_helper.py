@@ -79,6 +79,7 @@ def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title
     exit_line =             sample['geometry']['exit_line']
     curve_secant =          sample['geometry']['curve_secant']
     track_line =            sample['geometry']['track_line']
+    half_angle_line =       sample['geometry']['half_angle_line']
     intersection_angle =    sample['X'][_feature_types.index('intersection_angle')]
 
     rotation = (0., (0.,0.)) # rad
@@ -104,6 +105,8 @@ def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title
         sample['geometry']['curve_secant'] = curve_secant
         track_line = affinity.rotate(track_line, phi, origin=rot_c, use_radians=True)
         sample['geometry']['track_line'] = track_line
+        half_angle_line = affinity.rotate(half_angle_line, phi, origin=rot_c, use_radians=True)
+        sample['geometry']['half_angle_line'] = half_angle_line
 
     handles = []
     fig = plt.figure()
@@ -113,12 +116,14 @@ def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], title
     for proba_map in predicted_proba:
         plot_polar_probability_heatmap(proba_map, curve_secant, intersection_angle)
 
-    plot_lines('k', entry_line, exit_line)
+    plot_lines('k', entry_line, exit_line, half_angle_line)
     # plot_line('m', normal_en, normal_ex)
     # plot_line('g', neg_normal_en, neg_normal_ex)
     plot_line('k', curve_secant)
     handles.append( plot_line('r', track_line, 'Measured Track') )
+    handles.append( plot_line('b', get_predicted_line(sample, sample['y']), 'Measured Track Distances') )
     plot_arrows_along_line('r', track_line)
+    plot_arrows_along_line('b', get_predicted_line(sample, sample['y']))
 
     colors = get_distributed_colors(len(predicted))
     if labels==[]: labels = [""]*len(predicted)
