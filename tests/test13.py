@@ -7,7 +7,7 @@ import automatic_test
 import regressors
 import reference_implementations
 from extract_features import _feature_types, select_label_method
-from plot_helper import plot_intersection
+from plot_helper import plot_intersection, get_heatmap_from_polar_all_predictors
 
 feature_list = _feature_types
 
@@ -19,7 +19,11 @@ train_samples, test_samples = automatic_test.get_partitioned_samples(samples, 0.
 #automatic_test.test([rf_algo], train_samples, test_samples, cross_validation=False)
 automatic_test.train([rf_algo], train_samples)
 results = automatic_test.predict_all_estimators([rf_algo], test_samples)
+
 for sample, predictions_all_estimators in zip(test_samples, results[rf_algo]['predictions_all_estimators']):
     predicted_radii = [pred[0] for pred in predictions_all_estimators]
     print predicted_radii
-    plot_intersection(sample, predicted_radii, orientation="curve-secant")
+    heatmap = get_heatmap_from_polar_all_predictors(predicted_radii,
+                                                    sample['geometry']['curve_secant'],
+                                                    sample['X'][_feature_types.index('intersection_angle')])
+    plot_intersection(sample, predicted_radii, heatmap=heatmap, orientation="preserve")
