@@ -660,14 +660,20 @@ def get_half_angle_vec(exit_line, intersection_angle):
     half_angle_vec = rotate_xy(exit_v, np.sign(intersection_angle) * half_angle, (0,0))
     return half_angle_vec
 
-def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, track_line):
-    """Sample the track's distance to entry and exit line along half_angle_vec"""
+def set_up_way_line_and_distances(entry_line, exit_line):
+    """Constructs the relevant way_line out of entry and exit line and calculates
+    the distance steps"""
     # Get only the relevant parts of entry and exit way
     _, l1 = split_line(entry_line, entry_line.length - INT_DIST)
     l2, _ = split_line(exit_line, INT_DIST)
     way_line = join_lines(l1, l2)
     # Evenly place sampling distances along way_line
-    line_dists = np.linspace(0, way_line.length, SAMPLE_RESOLUTION)
+    distance_steps = np.linspace(0, way_line.length, SAMPLE_RESOLUTION)
+    return way_line, distance_steps
+
+def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, track_line):
+    """Sample the track's distance to entry and exit line along half_angle_vec"""
+    way_line, line_dists = set_up_way_line_and_distances(entry_line, exit_line)
     sampled_dist = []
     # Get the distance from way_line to track_line at every sampling position
     for ld in line_dists:
@@ -700,23 +706,37 @@ def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, trac
             raise SampleError("Track failed to be sampled along half_angle_vec")
     return sampled_dist
 
-def get_predicted_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, d_pred):
-    """Construct a predicted line along half_angle_vec with d_pred"""
-    # Get only the relevant parts of entry and exit way
-    _, l1 = split_line(entry_line, entry_line.length - INT_DIST)
-    l2, _ = split_line(exit_line, INT_DIST)
-    way_line = join_lines(l1, l2)
-    # Evenly place sampling distances along way_line
-    line_dists = np.linspace(0, way_line.length, SAMPLE_RESOLUTION)
-    pred_line_points = []
-    # Construct a point at a distance at every sampling position
-    for ld, pd in zip(line_dists, d_pred):
+def get_cartesian_from_distances(LineDistances, MeasureDistances, way_line, half_angle_vec):
+    """Transform coordinates from distances system into cartesian xy-coordinates"""
+    X = np.zeros(np.shape(LineDistances))
+    Y = np.zeros(np.shape(LineDistances))
+    for i in range(X.size):
+        i_arr = np.unravel_index(i, np.shape(X))
+        ld = LineDistances[i_arr]
+        md = MeasureDistances[i_arr]
+
         way_line_p = way_line.interpolate(ld)
         # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
         pos_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) + half_angle_vec)]
         pos_ruler = LineString(pos_ruler_coords)
-        pred_line_points.append(extended_interpolate(pos_ruler, pd))
-    return LineString(pred_line_points)
+        xy_p = extended_interpolate(pos_ruler, md)
+        X[i_arr], Y[i_arr] = xy_p.coords[0]
+    return X, Y
+
+def get_predicted_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, d_pred):
+    """Construct a predicted line along half_angle_vec with d_pred"""
+    way_line, line_dists = set_up_way_line_and_distances(entry_line, exit_line)
+    pred_line_points = []
+    # Construct a point at a distance at every sampling position
+    # for ld, pd in zip(line_dists, d_pred):
+    #     way_line_p = way_line.interpolate(ld)
+    #     # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
+    #     pos_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) + half_angle_vec)]
+    #     pos_ruler = LineString(pos_ruler_coords)
+    #     pred_line_points.append(extended_interpolate(pos_ruler, pd))
+    X, Y = get_cartesian_from_distances(line_dists, d_pred, way_line, half_angle_vec)
+    coords = zip(list(X), list(Y))
+    return LineString(coords)
 
 def rotate_xy(coords, phi, rot_c):
     """Rotate coords [n x 2] in 2D plane about the rotation center rot_c [1 x 2] with angle (rad)"""

@@ -3,23 +3,24 @@
 from __future__ import division
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.colors as colors
 import seaborn as sns
 import pandas
 import numpy as np
 from extract_features import get_normal_to_line, extend_line, get_predicted_line,\
                 _feature_types, get_cartesian_from_polar, get_angle_between_lines,\
-                rotate_xy
+                rotate_xy, set_up_way_line_and_distances, get_cartesian_from_distances
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from shapely import affinity
 import copy
-from constants import SAMPLE_RESOLUTION
+from constants import SAMPLE_RESOLUTION, INT_DIST
 import scipy.interpolate
 import scipy.stats
 
 def get_distributed_colors(number, colormap='Set1'):
     cmap = plt.get_cmap('Set1')
-    colors = [cmap(i) for i in np.linspace(0., 1., number)]
-    return colors
+    rgbcolors = [cmap(i) for i in np.linspace(0., 1., number)]
+    return rgbcolors
 
 def plot_coords(x, y, color, label=None):
     handle, = plt.plot(x,y, color=color, linestyle='-', label=label)
@@ -54,35 +55,26 @@ def plot_arrows_along_line(color, center_line):
         plot_arrow(color, center_line, i*MIN_DIST, normalized=False)
 
 class RBFValley:
+    """Constructs a 'valley' of RBFs at node points and can be evaluated at
+    any given point"""
     def __init__(self, X, Y, epsilon):
-        self._rbfs = []
-        for nx, ny in zip(X,Y):
-            self._rbfs.append(lambda x, y: self._rbf(x, y, nx, ny, epsilon))
-
-    def _rbf(self, x, y, nx, ny, epsilon):
-        r = np.sqrt((x-nx)**2 + (y-nx)**2)
-        return np.exp(-((epsilon*r)**2))
+        self._nX = X
+        self._nY = Y
+        self._epsilon = epsilon
 
     def __call__(self, x, y):
-        d = 0.
-        for rbfk in self._rbfs:
-            d += rbfk(x,y)
-        return d
+        R = np.sqrt(np.power(self._nX - x, 2) + np.power(self._nY - y, 2))
+        return np.sum(np.exp(- np.power(self._epsilon * R, 2)))
 
 def get_heatmap_from_polar_all_predictors(predictions, curve_secant, intersection_angle):
     # Set up the RBF Interpolator
     angle_steps = np.linspace(0., np.pi, SAMPLE_RESOLUTION)
     rbfPhi = []
     rbfR = []
-    # rbfD = []
     for pred in predictions:
         rbfPhi.extend(list(angle_steps))
         rbfR.extend(list(pred))
-        # rbfD.extend([1.]*len(pred))
-    # rbfi = scipy.interpolate.Rbf(rbfPhi, rbfR, rbfD)
-    # values = np.vstack([np.array(rbfPhi), np.array(rbfR)])
-    # kernel = scipy.stats.gaussian_kde(values)
-    rbfi = RBFValley(rbfPhi, rbfR, 5.0)
+    rbfi = RBFValley(rbfPhi, rbfR, 0.5)
 
     # Set up the grid to sample the RBF at
     r_min = 2.0
@@ -102,6 +94,37 @@ def get_heatmap_from_polar_all_predictors(predictions, curve_secant, intersectio
 
     # Transform RBF grid into XY-Space for heatmap
     X, Y = get_cartesian_from_polar(R, Phi, curve_secant, intersection_angle)
+
+    return X, Y, D
+
+def get_heatmap_from_distances_all_predictors(predictions, entry_line, exit_line, half_angle_vec):
+    # Set up the RBF Interpolator
+    way_line, line_distances = set_up_way_line_and_distances(entry_line, exit_line)
+    rbfLineDist = []
+    rbfMeasureDist = []
+    for pred in predictions:
+        rbfLineDist.extend(line_distances)
+        rbfMeasureDist.extend(pred)
+    rbfi = RBFValley(rbfLineDist, rbfMeasureDist, 0.5)
+
+    # Set up the grid to sample the RBF at
+    line_dist_min = 0.
+    line_dist_max = 2*INT_DIST
+    line_dist_resolution = 100
+    measure_dist_min = -10.
+    measure_dist_max = 10.
+    measure_dist_resolution = 60
+    LineDists = np.rot90(np.tile(np.linspace(line_dist_min, line_dist_max, line_dist_resolution), (measure_dist_resolution, 1)))
+    MeasureDists = np.tile(np.linspace(measure_dist_min, measure_dist_max, measure_dist_resolution), (line_dist_resolution, 1))
+    D = np.zeros((np.shape(LineDists)[0]-1, np.shape(MeasureDists)[1]-1))
+
+    # Sample the RBF
+    for j in range(np.shape(LineDists)[0]-1):
+        for k in range(np.shape(LineDists)[1]-1):
+            D[j,k] = rbfi(LineDists[j,k], MeasureDists[j,k])
+
+    # Transform RBF grid into XY-Space for heatmap
+    X, Y = get_cartesian_from_distances(LineDists, MeasureDists, way_line, half_angle_vec)
 
     return X, Y, D
 
@@ -126,7 +149,7 @@ def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_a
     p = ax.pcolormesh(X, Y, prediction, cmap="Oranges")
     plt.gcf().colorbar(p)
 
-def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], heatmap=None, title=None, block=True, probability_map=None, orientation="preserve"):
+def plot_intersection(sample, predicted=[], labels=[], heatmap=None, title=None, block=True, orientation="preserve"):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     csample = copy.deepcopy(sample)
@@ -183,9 +206,6 @@ def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], heatm
         p = ax.pcolormesh(X, Y, D, cmap="Oranges")
         plt.gcf().colorbar(p)
 
-    # for proba_map in predicted_proba:
-    #     plot_polar_probability_heatmap(proba_map, curve_secant, intersection_angle)
-
     plot_lines('k', entry_line, exit_line, half_angle_line)
     # plot_line('m', normal_en, normal_ex)
     # plot_line('g', neg_normal_en, neg_normal_ex)
@@ -195,12 +215,19 @@ def plot_intersection(sample, predicted=[], predicted_proba=[], labels=[], heatm
     plot_arrows_along_line('r', track_line)
     # plot_arrows_along_line('b', get_predicted_line(csample, csample['y']))
 
-    colors = get_distributed_colors(len(predicted))
-    if labels==[]: labels = [""]*len(predicted)
-    for pred, color, label in zip(predicted, colors, labels):
-        print sample['y'] - pred
-        line = get_predicted_line(csample, pred)
-        handles.append( plot_line(color, line, label) )
+    if predicted:
+        # Test if colors are given
+        # [(pred1, color1), ...]
+        if type(predicted[0]) == tuple and len(predicted[0]) == 2:
+            rgbcolors = [colors.colorConverter.to_rgb(pred[1]) for pred in predicted]
+            predicted = [pred[0] for pred in predicted]
+        else:
+            rgbcolors = get_distributed_colors(len(predicted))
+        if labels==[]: labels = [""]*len(predicted)
+        for pred, color, label in zip(predicted, rgbcolors, labels):
+            print sample['y'] - pred
+            line = get_predicted_line(csample, pred)
+            handles.append( plot_line(color, line, label) )
     plt.legend(handles=handles)
     if title: plt.title(title)
     plt.show(block=block)
