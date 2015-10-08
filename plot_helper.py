@@ -149,7 +149,7 @@ def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_a
     p = ax.pcolormesh(X, Y, prediction, cmap="Oranges")
     plt.gcf().colorbar(p)
 
-def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], heatmap=None, title=None, block=True, orientation="preserve"):
+def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_methods=[], heatmap=None, title=None, block=True, orientation="preserve"):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     csample = copy.deepcopy(sample)
@@ -220,9 +220,11 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], heatmap=Non
             rgbcolors = get_distributed_colors(len(predicted))
         if labels == []:
             labels = [""]*len(predicted)
-        for pred, color, label in zip(predicted, rgbcolors, labels):
+        if label_methods == []:
+            label_methods = [sample['label']['selected_method']]*len(predicted)
+        for pred, color, label, label_method in zip(predicted, rgbcolors, labels, label_methods):
             # print sample['y'] - pred
-            line = get_predicted_line(csample, pred)
+            line = get_predicted_line(pred, label_method, csample)
             handles.append( plot_line(color, line, label) )
     plt.legend(handles=handles)
     if title: plt.title(title)

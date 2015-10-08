@@ -783,11 +783,11 @@ def get_predicted_line_radii(curve_secant, radii_pred, intersection_angle):
     coords = zip(list(X), list(Y))
     return LineString(coords)
 
-def get_predicted_line(sample, pred):
+def get_predicted_line(pred, label_method, sample):
     """Returns the prediction as a LineString with the chosen label method"""
-    if sample['label']['selected_method'] == 'y_radii':
+    if label_method == 'y_radii':
         return get_predicted_line_radii(sample['geometry']['curve_secant'], pred, sample['X'][_feature_types.index('intersection_angle')])
-    elif sample['label']['selected_method'] == 'y_distances':
+    elif label_method == 'y_distances':
         half_angle_vec = get_half_angle_vec(sample['geometry']['exit_line'], sample['X'][_feature_types.index('intersection_angle')])
         return get_predicted_line_along_half_angle_vec(sample['geometry']['entry_line'], sample['geometry']['exit_line'], half_angle_vec, pred)
 
