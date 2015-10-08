@@ -350,7 +350,7 @@ def get_lane_count(way):
     # TODO: Does not support lanes:forward/backward tag
     if "lanes" in way["tags"]:
         lanes = way["tags"]["lanes"]
-        if lanes < 2 and get_oneway(way) == True:
+        if lanes < 2 and get_oneway(way) == False:
             # A street that is not oneway must have at least 2 lanes
             print "Correcting lanes to 2 because street is not oneway"
             lanes = 2

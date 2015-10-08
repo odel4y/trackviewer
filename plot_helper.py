@@ -74,15 +74,15 @@ def get_heatmap_from_polar_all_predictors(predictions, curve_secant, intersectio
     for pred in predictions:
         rbfPhi.extend(list(angle_steps))
         rbfR.extend(list(pred))
-    rbfi = RBFValley(rbfPhi, rbfR, 0.5)
+    rbfi = RBFValley(rbfPhi, rbfR, 1.0)
 
     # Set up the grid to sample the RBF at
     r_min = 2.0
     r_max = 30.0
-    r_resolution = 30
+    r_resolution = 60
     phi_min = 0.0
     phi_max = np.pi
-    phi_resolution = 50
+    phi_resolution = 100
     R = np.rot90(np.tile(np.linspace(r_min, r_max, r_resolution), (phi_resolution, 1)))
     Phi = np.tile(np.linspace(phi_min, phi_max, phi_resolution), (r_resolution, 1))
     D = np.zeros((np.shape(Phi)[0]-1, np.shape(Phi)[1]-1))
@@ -149,7 +149,7 @@ def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_a
     p = ax.pcolormesh(X, Y, prediction, cmap="Oranges")
     plt.gcf().colorbar(p)
 
-def plot_intersection(sample, predicted=[], labels=[], heatmap=None, title=None, block=True, orientation="preserve"):
+def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], heatmap=None, title=None, block=True, orientation="preserve"):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     csample = copy.deepcopy(sample)
@@ -216,16 +216,12 @@ def plot_intersection(sample, predicted=[], labels=[], heatmap=None, title=None,
     # plot_arrows_along_line('b', get_predicted_line(csample, csample['y']))
 
     if predicted:
-        # Test if colors are given
-        # [(pred1, color1), ...]
-        if type(predicted[0]) == tuple and len(predicted[0]) == 2:
-            rgbcolors = [colors.colorConverter.to_rgb(pred[1]) for pred in predicted]
-            predicted = [pred[0] for pred in predicted]
-        else:
+        if rgbcolors == []:
             rgbcolors = get_distributed_colors(len(predicted))
-        if labels==[]: labels = [""]*len(predicted)
+        if labels == []:
+            labels = [""]*len(predicted)
         for pred, color, label in zip(predicted, rgbcolors, labels):
-            print sample['y'] - pred
+            # print sample['y'] - pred
             line = get_predicted_line(csample, pred)
             handles.append( plot_line(color, line, label) )
     plt.legend(handles=handles)

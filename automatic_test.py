@@ -224,6 +224,12 @@ def get_result_statistics(results):
                                     }
     return result_statistics
 
+def output_sample_features(sample, features=_feature_types):
+    fn = sample['pickled_filename'].split('/')[-1]
+    print "=====", fn
+    for f in features:
+        print f, ":", sample['X'][_feature_types.index(f)]
+
 def output_formatted_result(results, output="console"):
     result_statistics = get_result_statistics(results)
     for algo, rs in result_statistics.iteritems():
