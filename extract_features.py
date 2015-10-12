@@ -791,6 +791,20 @@ def get_predicted_line(pred, label_method, sample):
         half_angle_vec = get_half_angle_vec(sample['geometry']['exit_line'], sample['X'][_feature_types.index('intersection_angle')])
         return get_predicted_line_along_half_angle_vec(sample['geometry']['entry_line'], sample['geometry']['exit_line'], half_angle_vec, pred)
 
+def get_rectified_mse(y_pred, label_method, sample):
+    """Returns a somewhat unbiased MSE by measuring the distance from one line
+    to another in direction of a normal"""
+    # Construct LineString to use geometric methods
+    pred_line = get_predicted_line(y_pred, label_method, sample)
+    coords_array = np.array(pred_line.coords[:])
+    # Calculate the line lengths at each coordinate
+    lengths = np.linalg.norm(coords_array[1:,:] - coords_array[:-1,:], axis=1)  # Respective length for each coordinate step
+    step_lengths = [0.] + list(np.cumsum(lengths))  # Cumulated lengths for each coordinate step
+    distances = []
+    for dist in step_lengths:
+        distances.append(get_lane_distance_projected_normal(pred_line, dist, sample['geometry']['track_line']))
+    return np.mean(np.power(np.array(distances), 2))
+
 def get_osm(int_sit):
     print 'Downloading OSM...'
     osm = get_osm_data(int_sit)
