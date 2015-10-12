@@ -120,6 +120,13 @@ def transform_to_cartesian(lon, lat):
     x,y = pyproj.transform(in_proj, out_proj, lon, lat)
     return x,y
 
+def transform_to_lon_lat(x, y):
+    """Transform to longitude/latitude values from a cartesian system"""
+    in_proj = pyproj.Proj(init='epsg:3857')   # Kartesische Koordinaten
+    out_proj = pyproj.Proj(init='epsg:4326')    # Längen-/Breitengrad
+    lon,lat = pyproj.transform(in_proj, out_proj, x, y)
+    return lon,lat
+
 def get_element_by_id(osm, el_id):
     """Returns the element with el_id from osm"""
     osm_iter = iter(osm)
@@ -380,7 +387,7 @@ def way_has_priority_by_tags(way):
     else:
         return False
 
-def get_has_right_of_way(ways, way_lines):
+def get_has_right_of_way(ways, way_lines, int_sit):
     # TODO: Does not represent intersections with signals
     # TODO: Does not consider priority signs
     if way_has_priority_by_tags(ways["entry_way"]):
@@ -592,7 +599,8 @@ def get_lane_distance_projected_normal(way_line, dist, track_line, normalized=Fa
     if dist_n == dist_nn == None:
         raise NoIntersectionError("No intersection of normals with track found")
     else:
-        return dist_n or -dist_nn # Return the one that is not None
+        if dist_n != None: return dist_n
+        else: return -dist_nn
 
 def get_reversed_line(way_line):
     """Reverse the order of the coordinates in a LineString"""
@@ -712,6 +720,9 @@ def get_cartesian_from_distances(LineDistances, MeasureDistances, way_line, half
     Y = np.zeros(np.shape(LineDistances))
     for i in range(X.size):
         i_arr = np.unravel_index(i, np.shape(X))
+        if type(i_arr) == tuple and len(i_arr) == 1:
+            i_arr = i_arr[0]
+        print i_arr
         ld = LineDistances[i_arr]
         md = MeasureDistances[i_arr]
 
@@ -824,10 +835,17 @@ def get_intersection_geometry(int_sit, osm):
     track = int_sit["track"]
     return ways, way_lines, curve_secant, track
 
+def boolean_to_float(b):
+    if b: return 1.0
+    else: return -1.0
+
+def float_to_boolean(f):
+    if f == 1.0: return True
+    elif f == -1.0: return False
+    else:
+        raise ValueError("Could not convert float %.1f to boolean")
+
 def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
-    def convert_boolean(b):
-        if b: return 1.0
-        else: return -1.0
     entry_way = ways["entry_way"]
     exit_way = ways["exit_way"]
     other_ways = ways["other_ways"]
@@ -842,8 +860,8 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     features["intersection_angle"] =                    intersection_angle
     features["maxspeed_entry"] =                        float(get_maxspeed(entry_way))
     features["maxspeed_exit"] =                         float(get_maxspeed(exit_way))
-    features["oneway_entry"] =                          convert_boolean(get_oneway(entry_way))
-    features["oneway_exit"] =                           convert_boolean(get_oneway(exit_way))
+    features["oneway_entry"] =                          boolean_to_float(get_oneway(entry_way))
+    features["oneway_exit"] =                           boolean_to_float(get_oneway(exit_way))
     lane_distance_entry_exact, lane_distance_exit_exact = get_lane_distance_exact(curve_secant, track_line)
     features["lane_distance_entry_exact"] =             float(lane_distance_entry_exact)
     features["lane_distance_exit_exact"] =              float(lane_distance_exit_exact)
@@ -858,11 +876,11 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     vehicle_speed_exit = get_vehicle_speed(exit_line, INT_DIST, track)
     features["vehicle_speed_entry"] =                   float(vehicle_speed_entry)
     features["vehicle_speed_exit"] =                    float(vehicle_speed_exit)
-    features["bicycle_designated_entry"] =              convert_boolean(get_bicycle_designated(entry_way))
-    features["bicycle_designated_exit"] =               convert_boolean(get_bicycle_designated(exit_way))
+    features["bicycle_designated_entry"] =              boolean_to_float(get_bicycle_designated(entry_way))
+    features["bicycle_designated_exit"] =               boolean_to_float(get_bicycle_designated(exit_way))
     features["lane_count_entry"] =                      float(get_lane_count(entry_way))
     features["lane_count_exit"] =                       float(get_lane_count(exit_way))
-    features["has_right_of_way"] =                      convert_boolean(get_has_right_of_way(ways, way_lines))
+    features["has_right_of_way"] =                      boolean_to_float(get_has_right_of_way(ways, way_lines, int_sit))
     features["curve_secant_dist"] =                     float(get_curve_secant_dist(entry_line, curve_secant))
     label = copy.deepcopy(_label)
     radii = sample_line(curve_secant, track_line, features["intersection_angle"])
