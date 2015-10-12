@@ -27,3 +27,4 @@ for sample, predictions_all_estimators in zip(test_samples, results[rf_algo]['pr
                                                     sample['geometry']['curve_secant'],
                                                     sample['X'][_feature_types.index('intersection_angle')])
     plot_intersection(sample, predicted_radii, heatmap=heatmap, orientation="preserve")
+    # plot_intersection(sample, predicted_radii, orientation="preserve")
