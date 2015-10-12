@@ -4,7 +4,7 @@ from __future__ import division
 from abc import ABCMeta, abstractmethod
 from extract_features import get_intersection_angle, get_curve_secant_line,\
     sample_line, _feature_types, get_matrices_from_samples, get_samples_from_matrices,\
-    get_predicted_line, _feature_types
+    get_predicted_line, _feature_types, get_rectified_mse
 from sklearn.metrics import mean_squared_error
 import sklearn.preprocessing
 import random
@@ -88,7 +88,8 @@ def predict(algorithms, test_samples):
         for s in test_samples:
             y_true = s['y']
             y_pred = algo.predict(s)
-            mse = mean_squared_error(y_true, y_pred)
+            # mse = mean_squared_error(y_true, y_pred)
+            mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
             results[algo]['predictions'].append(y_pred)
             results[algo]['mse'].append(mse)
     return results
@@ -125,7 +126,8 @@ def predict_all_estimators(algorithms, test_samples):
         for s in test_samples:
             y_true = s['y']
             y_pred = algo.predict(s)
-            mse = mean_squared_error(y_true, y_pred)
+            # mse = mean_squared_error(y_true, y_pred)
+            mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
             all_estimators_pred = algo.predict_all_estimators(s)
             results[algo]['predictions'].append(y_pred)
             results[algo]['mse'].append(mse)

@@ -802,7 +802,12 @@ def get_rectified_mse(y_pred, label_method, sample):
     step_lengths = [0.] + list(np.cumsum(lengths))  # Cumulated lengths for each coordinate step
     distances = []
     for dist in step_lengths:
-        distances.append(get_lane_distance_projected_normal(pred_line, dist, sample['geometry']['track_line']))
+        try:
+            distances.append(get_lane_distance_projected_normal(pred_line, dist, sample['geometry']['track_line']))
+        except NoIntersectionError as e:
+            print e
+            print 'Skipping this coordinate'
+            continue
     return np.mean(np.power(np.array(distances), 2))
 
 def get_osm(int_sit):

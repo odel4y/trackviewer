@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #coding:utf-8
-# Test RandomForestAlgorithm with different label methods
+# Test RandomForestAlgorithm with radii and distances label methods
 import sys
 sys.path.append('../')
 import automatic_test
