@@ -3,9 +3,12 @@
 import automatic_test
 import numpy as np
 import extract_features
+from extract_features import _feature_types
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas
+from constants import INT_DIST
+import plot_helper
 
 def get_array_from_feature(samples, feature):
     feature_i = extract_features._feature_types.index(feature)
@@ -38,13 +41,35 @@ def plot_label_heatmap(samples, bars_y = 30):
     sns.axlabel("Angle", "Radius")
     sns.plt.show(f)
 
-def plot_histogram(array, bins, title, block=True):
-    hist, bins = np.histogram(array, bins=bins)
-    width = 0.7 * (bins[1] - bins[0])
-    center = (bins[:-1] + bins[1:]) / 2
-    plt.bar(center, hist, align='center', width=width)
-    plt.title(title)
-    plt.show(block=block)
+def plot_sample_intersection_curvature(samples):
+    """Plot each sample's curvature relative to the intersection distances coordinate system"""
+    sample_steps = 100
+    curvatures = np.zeros((len(samples), sample_steps))
+    line_dists = np.array(curvatures)
+
+    for i, s in enumerate(samples):
+        track_line = s['geometry']['track_line']
+        curvature_sample_coords = [track_line.interpolate(dist).coords[0] for dist in np.linspace(0, track_line.length, 100)]
+        X, Y = zip(*curvature_sample_coords)
+
+        half_angle_vec = extract_features.get_half_angle_vec(s['geometry']['exit_line'], s['X'][_feature_types.index('intersection_angle')])
+
+        way_line, dists = extract_features.set_up_way_line_and_distances(s['geometry']['entry_line'], s['geometry']['exit_line'])
+        way_line = extract_features.extend_line(way_line, 1000.0, direction="both") # Make sure the way_line is not too short to cover the whole track
+        try:
+            LineDistances, _ = extract_features.get_distances_from_cartesian(X, Y, way_line, half_angle_vec)
+        except extract_features.NoIntersectionError:
+            plot_helper.plot_intersection(s, additional_lines=[way_line])
+
+        line_dists[i] = LineDistances - 1000.0 - INT_DIST  # Shift to the actual coordinate system
+        curvatures[i] = extract_features.get_line_curvature(track_line, sample_steps)
+
+    fig = plt.figure()
+    plt.hold(True)
+    for i in range(curvatures.shape[0]):
+        plt.plot(line_dists[i], curvatures[i], color=(.5,.5,.5), linestyle='-')
+    plt.title("Sample curvature over intersection coordinates")
+    plt.show()
 
 samples = automatic_test.load_samples('data/training_data/samples.pickle')
 print 'Sample count:', len(samples)
@@ -53,8 +78,8 @@ print 'oneway_entry: Yes: %d No: %d' % (oneway_entry.count(1.0), oneway_entry.co
 oneway_exit = list(get_array_from_feature(samples, 'oneway_exit'))
 print 'oneway_exit: Yes: %d No: %d' % (oneway_exit.count(1.0), oneway_exit.count(-1.0))
 intersection_angles = get_array_from_feature(samples, 'intersection_angle')/(np.pi)*180.0
-#plot_histogram(intersection_angles, 16, 'Intersection Angles')
 sns.set(color_codes=True)
 plot_label_heatmap(samples)
 angle_plot = sns.distplot(intersection_angles, bins=20, kde=False, rug=True)
 sns.plt.show(angle_plot)
+plot_sample_intersection_curvature(samples)

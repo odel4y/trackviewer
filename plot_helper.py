@@ -149,7 +149,7 @@ def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_a
     p = ax.pcolormesh(X, Y, prediction, cmap="Oranges")
     plt.gcf().colorbar(p)
 
-def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_methods=[], heatmap=None, title=None, block=True, orientation="preserve"):
+def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_methods=[], additional_lines=[], heatmap=None, title=None, block=True, orientation="preserve"):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     csample = copy.deepcopy(sample)
@@ -226,6 +226,10 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
             # print sample['y'] - pred
             line = get_predicted_line(pred, label_method, csample)
             handles.append( plot_line(color, line, label) )
+
+    for line in additional_lines:
+        plot_line('k', line)
+        
     plt.legend(handles=handles)
     if title: plt.title(title)
     plt.show(block=block)
