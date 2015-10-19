@@ -1,5 +1,6 @@
 #!/usr/bin/python
 #coding:utf-8
+from __future__ import division
 import sys
 import os.path
 import pickle
@@ -602,12 +603,22 @@ def get_lane_distance_projected_normal(way_line, dist, track_line, normalized=Fa
         if dist_n != None: return dist_n
         else: return -dist_nn
 
+# def get_track_dist_at_way_dist(way_line, dist, track_line):
+#     """Get the track's projected dist at the point the way_line normal at dist points at"""
+#     # Construct the normal and its negative counterpart to the line at dist
+#     normal, neg_normal = get_normal_to_line(way_line, dist, normalized=normalized, direction="both")
+#     normal_p = extended_interpolate(way_line, dist, normalized=normalized)
+#     # Extend lines to be sure that they intersect with track line
+#     normal = extend_line(normal, 100.0, direction="forward")
+#     neg_normal = extend_line(neg_normal, 100.0, direction="forward")
+#     pos_normal_p = find_closest_intersection(normal, normal_p, track_line)
+
 def get_reversed_line(way_line):
     """Reverse the order of the coordinates in a LineString"""
     rev_line = LineString(reversed(way_line.coords))
     return rev_line
 
-def get_line_curvature(way_line):
+def get_total_line_curvature(way_line):
     """Get the curvature of a line over INT_DIST"""
     normal1 = get_normal_to_line(way_line, 0.0)
     normal2 = get_normal_to_line(way_line, INT_DIST)
@@ -615,6 +626,33 @@ def get_line_curvature(way_line):
     vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
     d_angle = get_vec_angle(vec1, vec2)
     return d_angle/INT_DIST
+
+def get_curvature_at(way_line, dist, normalized=False):
+    """Get the curvature of a line at dist"""
+    if normalized: dist = dist * way_line.length
+    measure_interval_len = 2.0      # Interval length on which the curvature is calculated [m]
+    normal1 = get_normal_to_line(way_line, dist - measure_interval_len/2.0)
+    normal2 = get_normal_to_line(way_line, dist + measure_interval_len/2.0)
+    vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
+    vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
+    d_angle = get_vec_angle(vec1, vec2)
+    return d_angle/measure_interval_len
+
+def get_line_curvature(way_line, sample_steps=100):
+    """Get the curvature of way_line sampled with sample_steps"""
+    measure_interval_len = way_line.length / (sample_steps - 1)
+    curvature_list = []
+
+    normal1 = get_normal_to_line(way_line, 0.0 - measure_interval_len/2.0)
+    vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
+    for i in range(sample_steps + 1):
+        normal2 = get_normal_to_line(way_line, (float(i) - 0.5)*measure_interval_len)
+        vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
+        d_angle = get_vec_angle(vec1, vec2)
+        curvature_list.append(d_angle/measure_interval_len)
+        normal1 = normal2
+        vec1 = vec2
+    return curvature_list
 
 def get_normal_to_line(line, dist, normalized=False, direction="forward"):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
@@ -713,6 +751,126 @@ def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, trac
         else:
             raise SampleError("Track failed to be sampled along half_angle_vec")
     return sampled_dist
+
+# def get_projected_distance(p_coords, line_coords, proj_vec_coords, direction="both"):
+#         """Get the distance of a point to a line along proj_vec while only measuring forward/backward or both directions"""
+#
+#         def get_proj_dist_one_p_mult_vec(direction):
+#             """Get the projected distance for one point to a line with multiple proj_vecs"""
+#             if direction == "forward":
+#                 proj_vecs = proj_vec_coords
+#             elif direction == "backward":
+#                 proj_vecs = -proj_vec_coords
+#
+#             # Calculate the angles of all line_coords respective to the proj_vec
+#             angles = np.zeros(line_coords.shape[0],proj_vec_coords.shape[0])    # Actually cos angle
+#             cross_prod = np.zeros(line_coords.shape[0],proj_vec_coords.shape[0])
+#             vecs_to_line_coords = line_coords - p_coords
+#             vecs_to_line_coords_lengths = np.linalg.norm(vecs_to_line_coords, axis=1)
+#             proj_vecs_lengths = np.linalg.norm(proj_vecs, axis=1)
+#
+#             for j in xrange(angles.shape[0]):
+#                 for k in xrange(angles.shape[1]):
+#                     angles[j,k] = np.dot(proj_vecs[k], vecs_to_line_coords[j]) / \
+#                                 (proj_vecs_lengths[k] * vecs_to_line_coords_lengths[j])
+#                     cross_prod[j,k] = np.cross(proj_vecs[k], vecs_to_line_coords[j])
+#
+#             # Find the indices of the respective minimum angles
+#             min_ind = np.argmax(angles, axis=0)
+#             neighbor_ind = np.zeros(min_ind.shape)
+#             for j in xrange(min_ind.size):
+#                 this_sign = np.sign(cross_prod[min_ind[j], j])
+#                 try:
+#                     next_sign = np.sign(cross_prod[min_ind[j]+1, j])
+#                 except IndexError:
+#                     next_sign = None
+#                 try:
+#                     previous_sign = np.sign(cross_prod[min_ind[j]-1, j])
+#                 except IndexError:
+#                     previous_sign = None
+#
+#                 if next_sign != None and previous_sign != None:
+#                     if next_sign == previous_sign:
+#                         raise NoIntersectionError()
+#                     elif next_sign != this_sign:
+#                         neighbor_ind[j] = min_ind[j]+1
+#                     elif previous_sign != this_sign:
+#                         neighbor_ind[j] = min_ind[j]-1
+#                     else:
+#                         raise NoIntersectionError()
+#
+#                 raise NoIntersectionError("No intersection could be found while measuring projected distance")
+        #
+        #
+        # def get_proj_dist_mult_p_one_vec(direction):
+        #     """Get the projected distance for multiple points to a line with one proj_vec"""
+
+def get_projected_distance(p, line, proj_vec, direction="both", ret_line_dist=False):
+    """Get the distance of a point to a line along proj_vec while only measuring forward/backward or both directions.
+    Optionally also returns the line distance where the proj_vec crosses the line"""
+    SEARCH_LENGTH = 200.0
+    pos_dist, neg_dist = None, None
+    pos_line_dist, neg_line_dist = None, None
+
+    # Construct a ruler along proj_vec that can be used to measure the distance from p to line
+    if direction in ["forward", "both"]:
+        pos_ruler_coords = [(x, y), tuple(np.array((x, y)) + proj_vec)]
+        pos_ruler = extend_line(LineString(pos_ruler_coords), SEARCH_LENGTH, direction="forward")
+        pos_intsec_p = find_closest_intersection(pos_ruler, p, line)
+        if pos_intsec_p != None:
+            pos_dist = p.distance(pos_intsec_p)
+            if ret_line_dist:
+                pos_line_dist = line.project(pos_intsec_p)
+
+    if direction in ["backward", "both"]:
+        neg_ruler_coords = [(x, y), tuple(np.array((x, y)) - proj_vec)]
+        neg_ruler = extend_line(LineString(neg_ruler_coords), SEARCH_LENGTH, direction="forward")
+        neg_intsec_p = find_closest_intersection(neg_ruler, p, line)
+        if neg_intsec_p != None:
+            neg_dist = - p.distance(neg_intsec_p)
+            if ret_line_dist:
+                neg_line_dist = line.project(neg_intsec_p)
+
+    def pos():
+        if ret_line_dist:
+            return pos_dist, pos_line_dist
+        else:
+            return pos_dist
+
+    def neg():
+        if ret_line_dist:
+            return neg_dist, neg_line_dist
+        else:
+            return neg_dist
+
+    if pos_dist != None and neg_dist != None:
+        if pos_dist <= np.abs(neg_dist):
+            return pos()
+        else:
+            return neg()
+    elif pos_dist != None:
+        return pos()
+    elif neg_dist != None:
+        return neg()
+    else:
+        raise NoIntersectionError("No intersection of proj_vec with line found")
+
+def get_distances_from_cartesian(X, Y, way_line, half_angle_vec):
+    """Transform coordinates from cartesian xy-coordinates into distances system"""
+    LineDistances = np.zeros(np.shape(X))
+    MeasureDistances = np.zeros(np.shape(X))
+    for i in range(LineDistances.size):
+        i_arr = np.unravel_index(i, np.shape(LineDistances))
+        if type(i_arr) == tuple and len(i_arr) == 1:
+            i_arr = i_arr[0]
+        x = X[i_arr]
+        y = Y[i_arr]
+
+        md, ld = get_projected_distance(Point((x, y)), way_line, -half_angle_vec, ret_line_dist=True)
+
+        LineDistances[i_arr] = ld
+        MeasureDistances[i_arr] = md
+    return LineDistances, MeasureDistances
 
 def get_cartesian_from_distances(LineDistances, MeasureDistances, way_line, half_angle_vec):
     """Transform coordinates from distances system into cartesian xy-coordinates"""
@@ -870,8 +1028,8 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     features["lane_distance_exit_lane_center"] =        lane_distance_exit_lane_center
     features["lane_distance_entry_projected_normal"] =  float(get_lane_distance_projected_normal(entry_line, entry_line.length - INT_DIST, track_line))
     features["lane_distance_exit_projected_normal"] =   float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
-    features["curvature_entry"] =                       float(get_line_curvature(get_reversed_line(entry_line)))
-    features["curvature_exit"] =                        float(get_line_curvature(get_reversed_line(exit_line)))
+    features["curvature_entry"] =                       float(get_total_line_curvature(get_reversed_line(entry_line)))
+    features["curvature_exit"] =                        float(get_total_line_curvature(get_reversed_line(exit_line)))
     vehicle_speed_entry = get_vehicle_speed(entry_line, entry_line.length - INT_DIST, track)
     vehicle_speed_exit = get_vehicle_speed(exit_line, INT_DIST, track)
     features["vehicle_speed_entry"] =                   float(vehicle_speed_entry)
