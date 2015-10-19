@@ -639,9 +639,10 @@ def get_curvature_at(way_line, dist, normalized=False):
     return d_angle/measure_interval_len
 
 def get_line_curvature(way_line, sample_steps=100):
-    """Get the curvature of way_line sampled with sample_steps"""
+    """Get the curvature of way_line sampled with sample_steps and the corresponding line_dists"""
     measure_interval_len = way_line.length / (sample_steps - 1)
-    curvature_list = []
+    curvature_list = np.array([0]*sample_steps)
+    dist_list = np.array(curvature_list)
 
     normal1 = get_normal_to_line(way_line, 0.0 - measure_interval_len/2.0)
     vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
@@ -649,10 +650,11 @@ def get_line_curvature(way_line, sample_steps=100):
         normal2 = get_normal_to_line(way_line, (float(i) - 0.5)*measure_interval_len)
         vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
         d_angle = get_vec_angle(vec1, vec2)
-        curvature_list.append(d_angle/measure_interval_len)
+        curvature_list[i] = d_angle/measure_interval_len
+        dist_list[i] = i * measure_interval_len
         normal1 = normal2
         vec1 = vec2
-    return curvature_list
+    return dist_list, curvature_list
 
 def get_normal_to_line(line, dist, normalized=False, direction="forward"):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
