@@ -495,13 +495,13 @@ def extend_line(line, dist, direction="both"):
         slope_vec = np.array(line.coords[0]) - np.array(line.coords[1])
         norm_slope_vec = slope_vec / np.linalg.norm(slope_vec)
         start_c = [tuple(norm_slope_vec * dist + np.array(line.coords[0]))]
-    elif direction in ["both", "forward"]:
+    if direction in ["both", "forward"]:
         # coordinate of extending line segment at end
         slope_vec = np.array(line.coords[-1]) - np.array(line.coords[-2])
         norm_slope_vec = slope_vec / np.linalg.norm(slope_vec)
         end_c = [tuple(norm_slope_vec * dist + np.array(line.coords[-1]))]
         # new LineString is composed of new start and end parts plus the existing one
-    else:
+    if direction not in ["forward", "backward", "both"]:
         raise ValueError("Illegal argument for direction in extend_line")
     return LineString(start_c + list(line.coords) + end_c)
 
@@ -639,10 +639,9 @@ def get_curvature_at(way_line, dist, normalized=False):
     return d_angle/measure_interval_len
 
 def get_line_curvature(way_line, sample_steps=100):
-    """Get the curvature of way_line sampled with sample_steps and the corresponding line_dists"""
+    """Get the curvature of way_line sampled with sample_steps"""
     measure_interval_len = way_line.length / (sample_steps - 1)
     curvature_list = np.array([0]*sample_steps)
-    dist_list = np.array(curvature_list)
 
     normal1 = get_normal_to_line(way_line, 0.0 - measure_interval_len/2.0)
     vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
@@ -651,10 +650,9 @@ def get_line_curvature(way_line, sample_steps=100):
         vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
         d_angle = get_vec_angle(vec1, vec2)
         curvature_list[i] = d_angle/measure_interval_len
-        dist_list[i] = i * measure_interval_len
         normal1 = normal2
         vec1 = vec2
-    return dist_list, curvature_list
+    return curvature_list
 
 def get_normal_to_line(line, dist, normalized=False, direction="forward"):
     NORMAL_DX = 0.01 # Distance away from the center point to construct a vector
@@ -813,6 +811,7 @@ def get_projected_distance(p, line, proj_vec, direction="both", ret_line_dist=Fa
     SEARCH_LENGTH = 200.0
     pos_dist, neg_dist = None, None
     pos_line_dist, neg_line_dist = None, None
+    x, y = p.coords[0]
 
     # Construct a ruler along proj_vec that can be used to measure the distance from p to line
     if direction in ["forward", "both"]:
