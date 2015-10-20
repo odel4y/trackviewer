@@ -41,7 +41,7 @@ def plot_label_heatmap(samples, bars_y = 30):
     sns.axlabel("Angle", "Radius")
     sns.plt.show(f)
 
-def plot_sample_intersection_curvature(samples):
+def plot_sample_intersection_curvature(samples, title="Sample curvature over intersection coordinates"):
     """Plot each sample's curvature relative to the intersection distances coordinate system"""
     sample_steps = 100
     curvatures = np.zeros((len(samples), sample_steps))
@@ -68,18 +68,19 @@ def plot_sample_intersection_curvature(samples):
     plt.hold(True)
     for i in range(curvatures.shape[0]):
         plt.plot(line_dists[i], curvatures[i], color=(.5,.5,.5), linestyle='-')
-    plt.title("Sample curvature over intersection coordinates")
+    plt.title(title)
     plt.show()
 
-samples = automatic_test.load_samples('data/training_data/samples.pickle')
-print 'Sample count:', len(samples)
-oneway_entry = list(get_array_from_feature(samples, 'oneway_entry'))
-print 'oneway_entry: Yes: %d No: %d' % (oneway_entry.count(1.0), oneway_entry.count(-1.0))
-oneway_exit = list(get_array_from_feature(samples, 'oneway_exit'))
-print 'oneway_exit: Yes: %d No: %d' % (oneway_exit.count(1.0), oneway_exit.count(-1.0))
-intersection_angles = get_array_from_feature(samples, 'intersection_angle')/(np.pi)*180.0
-sns.set(color_codes=True)
-plot_label_heatmap(samples)
-angle_plot = sns.distplot(intersection_angles, bins=20, kde=False, rug=True)
-sns.plt.show(angle_plot)
-plot_sample_intersection_curvature(samples)
+if __name__ == "__main__":
+    samples = automatic_test.load_samples('data/training_data/samples.pickle')
+    print 'Sample count:', len(samples)
+    oneway_entry = list(get_array_from_feature(samples, 'oneway_entry'))
+    print 'oneway_entry: Yes: %d No: %d' % (oneway_entry.count(1.0), oneway_entry.count(-1.0))
+    oneway_exit = list(get_array_from_feature(samples, 'oneway_exit'))
+    print 'oneway_exit: Yes: %d No: %d' % (oneway_exit.count(1.0), oneway_exit.count(-1.0))
+    intersection_angles = get_array_from_feature(samples, 'intersection_angle')/(np.pi)*180.0
+    sns.set(color_codes=True)
+    plot_label_heatmap(samples)
+    angle_plot = sns.distplot(intersection_angles, bins=20, kde=False, rug=True)
+    sns.plt.show(angle_plot)
+    plot_sample_intersection_curvature(samples)
