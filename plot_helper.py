@@ -39,13 +39,13 @@ def plot_lines(color, *lines):
     return handles
 
 def plot_arrow(color, center_line, dist, normalized=False):
-    ARROW_LENGTH = 5.0
+    ARROW_LENGTH = 3.0
     origin_p = center_line.interpolate(dist, normalized=normalized)
     normal_line = get_normal_to_line(center_line, dist, normalized=normalized)
     half_arrow = extend_line(normal_line, ARROW_LENGTH - normal_line.length, direction="forward")
-    half_arrow = affinity.rotate(half_arrow, -30.0, origin=origin_p)
+    half_arrow = affinity.rotate(half_arrow, -55.0, origin=origin_p)
     plot_line(color, half_arrow)
-    half_arrow = affinity.rotate(half_arrow, -105.0, origin=origin_p)
+    half_arrow = affinity.rotate(half_arrow, -70.0, origin=origin_p)
     plot_line(color, half_arrow)
 
 def plot_arrows_along_line(color, center_line):
@@ -229,7 +229,7 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
 
     for line in additional_lines:
         plot_line('k', line)
-        
+
     plt.legend(handles=handles)
     if title: plt.title(title)
     plt.show(block=block)
