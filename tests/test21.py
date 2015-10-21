@@ -31,6 +31,7 @@ feature_list = [
 ]
 
 rf_algo = regressors.RandomForestAlgorithm(feature_list)
+is_algo = reference_implementations.InterpolatingSplineAlgorithm()
 kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10_12_rectified/samples.pickle')
 darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_15_10_20_darmstadt_rectified/samples.pickle')
 select_label_method(kitti_samples, 'y_distances')
@@ -41,9 +42,13 @@ train_samples = train_samples_kitti + train_samples_darmstadt
 test_samples = test_samples_darmstadt + test_samples_kitti
 automatic_test.train([rf_algo], train_samples)
 results = automatic_test.predict_all_estimators([rf_algo], test_samples)
+is_results = automatic_test.predict([is_algo], test_samples)
 
-for sample, prediction, predictions_all_estimators in zip(test_samples, results[rf_algo]['predictions'], results[rf_algo]['predictions_all_estimators']):
-    predicted_distances = [pred[0] for pred in predictions_all_estimators]
+for sample, rf_prediction, rf_predictions_all_estimators, is_prediction in zip(test_samples,
+                                                            results[rf_algo]['predictions'],
+                                                            results[rf_algo]['predictions_all_estimators'],
+                                                            is_results[is_algo]['predictions']):
+    predicted_distances = [pred[0] for pred in rf_predictions_all_estimators]
     half_angle_vec = get_half_angle_vec(sample['geometry']['exit_line'], sample['X'][_feature_types.index('intersection_angle')])
     heatmap = get_heatmap_from_distances_all_predictors(predicted_distances,
                                                     sample['geometry']['entry_line'],
@@ -51,4 +56,4 @@ for sample, prediction, predictions_all_estimators in zip(test_samples, results[
                                                     half_angle_vec)
     # plot_intersection(sample, predicted_distances, heatmap=heatmap, orientation="curve-secant")
     automatic_test.output_sample_features(sample, feature_list)
-    plot_intersection(sample, [prediction], rgbcolors=['b'], heatmap=heatmap, orientation="curve-secant")
+    plot_intersection(sample, [rf_prediction, is_prediction], rgbcolors=['b', 'g'], labels=['RF Algorithm', 'Spline Algorithm'], heatmap=heatmap, orientation="curve-secant")

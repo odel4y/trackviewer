@@ -5,7 +5,8 @@ import numpy as np
 import scipy.interpolate
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from extract_features import extended_interpolate, get_normal_to_line, \
-            sample_line, _feature_types, get_offset_point_at_distance, extend_line
+            sample_line, _feature_types, get_offset_point_at_distance, extend_line, \
+            sample_line_all
 from constants import LANE_WIDTH
 import automatic_test
 
@@ -92,10 +93,10 @@ class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
 
     def predict(self, sample):
         predicted_line = self.get_interpolating_spline_line(sample['geometry']['entry_line'], sample['geometry']['exit_line'])
-        radii = sample_line(sample['geometry']['curve_secant'],
-                            predicted_line,
-                            sample['X'][_feature_types.index('intersection_angle')])
-        return radii
+        pred = sample_line_all(predicted_line,
+                            sample['label']['selected_method'],
+                            sample)
+        return pred
 
     def get_interpolating_spline_line(self, entry_line, exit_line):
         w = LANE_WIDTH

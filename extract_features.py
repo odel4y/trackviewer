@@ -699,6 +699,15 @@ def sample_line(curve_secant, track_line, intersection_angle):
         radii.append(float(r))
     return radii
 
+def sample_line_all(line, label_method, sample):
+    if label_method == 'y_radii':
+        return sample_line(sample['geometry']['curve_secant'], line, sample['X'][_feature_types.index('intersection_angle')])
+    elif label_method == 'y_distances':
+        half_angle_vec = get_half_angle_vec(sample['geometry']['exit_line'], sample['X'][_feature_types.index('intersection_angle')])
+        return sample_line_along_half_angle_vec(sample['geometry']['entry_line'], sample['geometry']['exit_line'], half_angle_vec, line)
+    else:
+        raise NotImplementedError("Label method %s is not implemented" % label_method)
+
 def get_half_angle_vec(exit_line, intersection_angle):
     """Get the vector that is pointing at half the intersection angle between entry and exit"""
     exit_v = np.array(exit_line.coords[1]) - np.array(exit_line.coords[0])
