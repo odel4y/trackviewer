@@ -881,10 +881,8 @@ def get_cartesian_from_distances(LineDistances, MeasureDistances, way_line, half
         i_arr = np.unravel_index(i, np.shape(X))
         if type(i_arr) == tuple and len(i_arr) == 1:
             i_arr = i_arr[0]
-        print i_arr
         ld = LineDistances[i_arr]
         md = MeasureDistances[i_arr]
-
         way_line_p = way_line.interpolate(ld)
         # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
         pos_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) + half_angle_vec)]
