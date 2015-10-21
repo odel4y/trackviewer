@@ -29,4 +29,4 @@ for sample, prediction, predictions_all_estimators in zip(test_samples, results[
                                                     sample['geometry']['exit_line'],
                                                     half_angle_vec)
     # plot_intersection(sample, predicted_distances, heatmap=heatmap, orientation="curve-secant")
-    plot_intersection(sample, [(prediction, 'b')], heatmap=heatmap, orientation="curve-secant")
+    plot_intersection(sample, [prediction], rgbcolors=['b'], heatmap=heatmap, orientation="curve-secant")
