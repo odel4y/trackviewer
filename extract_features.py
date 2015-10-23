@@ -676,6 +676,33 @@ def get_normal_to_line(line, dist, normalized=False, direction="forward"):
     else:
         raise NotImplementedError('The option direction="%s" is not implemented.' % direction)
 
+def rotate_vec(vec, phi):
+    """Convenience function to rotate a vec for phi"""
+    return rotate_xy(vec, phi, (0.,0.))
+
+def get_absolute_vec_angle(vec):
+    """Convenience function to determine absolute angle of vec"""
+    return get_vec_angle(np.array([1,0]), vec)
+
+def get_normal_vec_at(line, dist):
+    """Returns the normal vector of line at dist"""
+    DX = 0.01
+    p1 = extended_interpolate(line, dist - DX)
+    p2 = extended_interpolate(line, dist + DX)
+    v1 = np.array([p2.x - p1.x, p2.y - p1.y, 0.0])
+    v2 = np.array([0.0, 0.0, 1.0])
+    normal = np.cross(v1, v2)
+    normal_vec = normal/np.linalg.norm(normal)
+    return normal_vec[:2]
+
+def get_tangent_vec_at(line, dist):
+    """Returns the tangential vector of line at dist"""
+    DX = 0.01
+    p1 = extended_interpolate(line, dist - DX)
+    p2 = extended_interpolate(line, dist + DX)
+    v1 = np.array([p2.x - p1.x, p2.y - p1.y])
+    return v1/np.linalg.norm(v1)
+
 def get_offset_point_at_distance(line, dist, parallel_offset):
     """Get a point normal to line at a parallel_offset to the point on line at dist"""
     normal = get_normal_to_line(line, dist)
