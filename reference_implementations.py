@@ -6,7 +6,8 @@ import scipy.interpolate
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from extract_features import extended_interpolate, get_normal_to_line, \
             sample_line, _feature_types, get_offset_point_at_distance, extend_line, \
-            sample_line_all
+            sample_line_all, get_tangent_vec_at, get_absolute_vec_angle, rotate_vec, \
+            get_vec_angle, get_normal_vec_at
 from constants import LANE_WIDTH, INT_DIST
 import automatic_test
 
@@ -128,7 +129,84 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         print "A_1:", A_1
         print "A_2:", A_2
         print "R_min:", R_min
-        print "V_min:", V_min
+
+        self._get_curved_line(A_1, A_2, R_min, sample)
+
+    def _get_curved_line(self, A_1, A_2, R_min, sample):
+        intersection_angle = sample['X'][_feature_types.index('intersection_angle')]
+        ang_sign = np.sign(intersection_angle)
+
+        entry_line = sample['geometry']['entry_line']
+        entry_lane_line = extend_line(entry_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="forward")
+        exit_line = sample['geometry']['exit_line']
+        exit_lane_line = extend_line(exit_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="backward")
+
+        # Entering Euler spiral
+        entry_tangent_vec = get_tangent_vec_at(entry_line, entry_line.length)
+        entry_euler_line = self._get_euler_spiral_line(R_min, ang_sign*A_1, entry_tangent_vec)
+
+        # Exiting Euler spiral
+        exit_tangent_vec = -get_tangent_vec_at(exit_line, 0.)
+        exit_euler_line = self._get_euler_spiral_line(R_min, -ang_sign*A_2, exit_tangent_vec)
+
+        # Constant curvature segment
+        normal1 = ang_sign*get_normal_vec_at(entry_euler_line, entry_euler_line.length)
+        normal2 = -ang_sign*get_normal_vec_at(exit_euler_line, exit_euler_line.length)
+        circular_line = self._get_circular_line(R_min, normal1, normal2)
+
+        # Join segments
+        curved_line = self._join_segments(entry_euler_line, circular_line, exit_euler_line)
+
+    def _join_segments(self, entry_euler_line, circular_line, exit_euler_line):
+        entry_el_coords = np.array(entry_euler_line.coords[:])
+        circ_l_coords = np.array(circular_line.coords[:])
+        circ_l_coords = circ_l_coords - circ_l_coords[0]
+        exit_el_coords = np.array(exit_euler_line.coords[:])
+        exit_el_coords = np.flipud(exit_el_coords)
+        exit_el_coords = exit_el_coords - exit_el_coords[0]
+
+        joined_coords = np.vstack((
+            entry_el_coords[:-1],
+            circ_l_coords + entry_el_coords[-1],
+            exit_el_coords[1:] + circ_l_coords[-1] + entry_el_coords[-1]
+        ))
+
+        import matplotlib.pyplot as plt
+        import plot_helper
+        plot_helper.plot_line('r', LineString([tuple(row) for row in entry_el_coords[:-1]]))
+        plot_helper.plot_line('g', LineString([tuple(row) for row in circ_l_coords + entry_el_coords[-1]]))
+        plot_helper.plot_line('b', LineString([tuple(row) for row in exit_el_coords[1:] + circ_l_coords[-1] + entry_el_coords[-1]]))
+        plt.axis('equal')
+        plt.show()
+
+        return LineString([tuple(row) for row in joined_coords])
+
+    def _get_euler_spiral_line(self, R_s, A, initial_tangent, sample_steps=100):
+        L_s = np.power(A,2)/R_s
+        ds = L_s/(sample_steps-1)
+
+        coords = np.zeros((sample_steps,2))
+        current_angle = get_absolute_vec_angle(initial_tangent)
+        for j in range(1, sample_steps):
+            last_curvature = (j-1)*ds/np.power(A,2)
+            current_angle += ds*last_curvature*np.sign(A)
+            step_vec = rotate_vec(np.array([1, 0]), current_angle)
+            coords[j] = coords[j-1] + step_vec*ds
+        return LineString([tuple(row) for row in coords])
+
+    def _get_circular_line(self, R_min, entry_normal, exit_normal, sample_steps=100):
+        phi = get_vec_angle(entry_normal, exit_normal)
+        initial_phi = get_absolute_vec_angle(entry_normal)
+        d_phi = phi/(sample_steps-1)
+
+        coords = np.zeros((sample_steps,2))
+        for j in range(sample_steps):
+            current_angle = initial_phi + j*d_phi
+            x = np.cos(current_angle)*R_min
+            y = np.sin(current_angle)*R_min
+            coords[j] = (x, y)
+
+        return LineString([tuple(row) for row in coords])
 
     def _calculate_intersection_features(self, sample):
         # All variables are calculated as if being in left hand traffic
