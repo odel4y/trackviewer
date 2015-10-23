@@ -7,7 +7,7 @@ from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 from extract_features import extended_interpolate, get_normal_to_line, \
             sample_line, _feature_types, get_offset_point_at_distance, extend_line, \
             sample_line_all
-from constants import LANE_WIDTH
+from constants import LANE_WIDTH, INT_DIST
 import automatic_test
 
 def parametric_combined_spline(x, y, k=3, resolution=100, kv=None, s=None):
@@ -117,3 +117,87 @@ class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
         x2, y2 = parametric_combined_spline(x, y, k=2, s=0.0)
         interpolating_spline_line = LineString(zip(x2, y2))
         return interpolating_spline_line
+
+class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
+    def __init__(self):
+        self.name = 'Alhajyaseen Algorithm'
+
+    def predict(self, sample):
+        features = self._calculate_intersection_features(sample)
+        A_1, A_2, R_min, V_min = self._calculate_curve_parameters(features, sample)
+        print "A_1:", A_1
+        print "A_2:", A_2
+        print "R_min:", R_min
+        print "V_min:", V_min
+
+    def _calculate_intersection_features(self, sample):
+        # All variables are calculated as if being in left hand traffic
+        # Other variables
+        intersection_angle = sample['X'][_feature_types.index('intersection_angle')] # intersection angle in radians (different system than Alhajyaseen)
+
+        # Alhajyaseen features
+        features = {}
+        features['R_c'] = 3.0                       # Corner radius [m]
+        features['theta'] = np.degrees(np.pi - np.abs(intersection_angle)) # intersection angle [deg]
+        features['heavy_vehicle_dummy'] = 0.0       # Passenger car
+        features['V_in'] = 25.0                     # Approaching speed estimated [km/h]
+
+        if intersection_angle >= 0.0:
+            # Right turn in left hand traffic
+            features['D_HN_IN'] = INT_DIST + LANE_WIDTH/2.0     # Distance from IP to hard nose at entry [m]
+            features['D_HN_OUT'] = INT_DIST + LANE_WIDTH/2.0    # Distance from IP to hard nose at exit [m]
+            features['MIN_D_HN'] = min(features['D_HN_IN'], features['D_HN_OUT'])    # Minimum of the two distances
+        else:
+            # Left turn in left hand traffic
+            features['lateral_exit_shoulder_dist'] = LANE_WIDTH/2.0
+        return features
+
+    def _calculate_curve_parameters(self, f, sample):
+        intersection_angle = sample['X'][_feature_types.index('intersection_angle')] # intersection angle in radians (different system than Alhajyaseen)
+        if intersection_angle >= 0.0:
+            # Right turn in left hand traffic
+            V_min = 4.49 \
+                    + 0.072*f['theta'] \
+                    + 0.0092*f['D_HN_IN'] \
+                    + 0.105*f['D_HN_OUT'] \
+                    + 0.38*f['V_in']
+
+            R_min = 1.86 \
+                    + 0.062*f['theta'] \
+                    + 0.13*f['MIN_D_HN'] \
+                    + 0.36*V_min
+
+            A_1   = - 8.65 \
+                    + 0.17*f['D_HN_IN'] \
+                    + 0.29*V_min
+
+            A_2   = 3.63 \
+                    + 0.24*f['D_HN_OUT'] \
+                    + 0.29*V_min
+        else:
+            # Left turn in left hand traffic
+            V_min = - 1.08 \
+                    + 0.22*f['R_c'] \
+                    + 0.14*f['theta'] \
+                    - 1.79*f['heavy_vehicle_dummy'] \
+                    + 0.84*f['lateral_exit_shoulder_dist'] \
+                    + 0.091*f['V_in']
+
+            R_min = - 6.46 \
+                    + 0.39*f['R_c'] \
+                    + 0.13*f['theta'] \
+                    + 0.86*f['lateral_exit_shoulder_dist']
+
+            A_1   = - 1.65 \
+                    + 0.33*f['R_c'] \
+                    + 0.0404*f['theta'] \
+                    + 0.46*f['lateral_exit_shoulder_dist'] \
+                    + 0.37*V_min
+
+            A_2   = 2.33 \
+                    + 0.34*f['R_c'] \
+                    + 2.051*f['heavy_vehicle_dummy'] \
+                    + 1.041*f['lateral_exit_shoulder_dist'] \
+                    + 0.27*V_min
+
+        return A_1, A_2, R_min, V_min
