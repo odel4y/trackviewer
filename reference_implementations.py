@@ -141,8 +141,11 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         exit_line = sample['geometry']['exit_line']
         exit_lane_line = extend_line(exit_line.parallel_offset(LANE_WIDTH/2, side='right'), 100.0, direction="backward")
 
-        # Entering Euler spiral
+        # Entering straight
         entry_tangent_vec = get_tangent_vec_at(entry_line, entry_line.length)
+        entry_straight_line = self._get_straight_line(entry_tangent_vec, 30.0)
+
+        # Entering Euler spiral
         entry_euler_line = self._get_euler_spiral_line(R_min, ang_sign*A_1, entry_tangent_vec)
 
         # Exiting Euler spiral
@@ -154,39 +157,47 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         normal2 = -ang_sign*get_normal_vec_at(exit_euler_line, exit_euler_line.length)
         circular_line = self._get_circular_line(R_min, normal1, normal2)
 
-        # Join segments
-        curved_line = self._join_segments(entry_euler_line, circular_line, exit_euler_line)
+        # Exiting straight line
+        exit_straight_line = self._get_straight_line(-exit_tangent_vec, 30.0)
 
-    def _join_segments(self, entry_euler_line, circular_line, exit_euler_line):
+        # Join segments
+        curved_line = self._join_segments(entry_straight_line, entry_euler_line, circular_line, exit_euler_line, exit_straight_line)
+
+    def _join_segments(self, entry_straight_line, entry_euler_line, circular_line, exit_euler_line, exit_straight_line):
+        entry_sl_coords = np.array(entry_straight_line.coords[:])
         entry_el_coords = np.array(entry_euler_line.coords[:])
         circ_l_coords = np.array(circular_line.coords[:])
         circ_l_coords = circ_l_coords - circ_l_coords[0]
         exit_el_coords = np.array(exit_euler_line.coords[:])
         exit_el_coords = np.flipud(exit_el_coords)
         exit_el_coords = exit_el_coords - exit_el_coords[0]
+        exit_sl_coords = np.array(exit_straight_line.coords[:])
 
         joined_coords = np.vstack((
-            entry_el_coords[:-1],
-            circ_l_coords + entry_el_coords[-1],
-            exit_el_coords[1:] + circ_l_coords[-1] + entry_el_coords[-1]
+            entry_sl_coords,
+            entry_el_coords[1:-1] + entry_sl_coords[1],
+            circ_l_coords + entry_sl_coords[1] + entry_el_coords[-1],
+            exit_el_coords[1:] + circ_l_coords[-1] + entry_el_coords[-1] + entry_sl_coords[1],
+            exit_sl_coords + circ_l_coords[-1] + entry_el_coords[-1] + entry_sl_coords[1] + exit_el_coords[-1]
         ))
 
         import matplotlib.pyplot as plt
         import plot_helper
-        plot_helper.plot_line('r', LineString([tuple(row) for row in entry_el_coords[:-1]]))
-        plot_helper.plot_line('g', LineString([tuple(row) for row in circ_l_coords + entry_el_coords[-1]]))
-        plot_helper.plot_line('b', LineString([tuple(row) for row in exit_el_coords[1:] + circ_l_coords[-1] + entry_el_coords[-1]]))
+        plot_helper.plot_line('r', LineString([tuple(row) for row in joined_coords]))
+        # plot_helper.plot_line('r', LineString([tuple(row) for row in entry_el_coords[:-1]]))
+        # plot_helper.plot_line('g', LineString([tuple(row) for row in circ_l_coords + entry_el_coords[-1]]))
+        # plot_helper.plot_line('b', LineString([tuple(row) for row in exit_el_coords[1:] + circ_l_coords[-1] + entry_el_coords[-1]]))
         plt.axis('equal')
         plt.show()
 
         return LineString([tuple(row) for row in joined_coords])
 
-    def _get_euler_spiral_line(self, R_s, A, initial_tangent, sample_steps=100):
+    def _get_euler_spiral_line(self, R_s, A, entry_tangent, sample_steps=100):
         L_s = np.power(A,2)/R_s
         ds = L_s/(sample_steps-1)
 
         coords = np.zeros((sample_steps,2))
-        current_angle = get_absolute_vec_angle(initial_tangent)
+        current_angle = get_absolute_vec_angle(entry_tangent)
         for j in range(1, sample_steps):
             last_curvature = (j-1)*ds/np.power(A,2)
             current_angle += ds*last_curvature*np.sign(A)
@@ -208,6 +219,13 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
 
         return LineString([tuple(row) for row in coords])
 
+    def _get_straight_line(self, entry_tangent, length):
+        coords = np.zeros((2,2))
+        entry_tangent = entry_tangent/np.linalg.norm(entry_tangent)
+        coords[1] = entry_tangent*length
+
+        return LineString([tuple(row) for row in coords])
+
     def _calculate_intersection_features(self, sample):
         # All variables are calculated as if being in left hand traffic
         # Other variables
@@ -218,7 +236,7 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         features['R_c'] = 3.0                       # Corner radius [m]
         features['theta'] = np.degrees(np.pi - np.abs(intersection_angle)) # intersection angle [deg]
         features['heavy_vehicle_dummy'] = 0.0       # Passenger car
-        features['V_in'] = 25.0                     # Approaching speed estimated [km/h]
+        features['V_in'] = sample['X'][_feature_types.index("vehicle_speed_entry")] # Approaching speed estimated [km/h]
 
         if intersection_angle >= 0.0:
             # Right turn in left hand traffic
