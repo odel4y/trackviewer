@@ -11,14 +11,35 @@ import extract_features
 import numpy as np
 import plot_helper
 import matplotlib.pyplot as plt
-kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10_08/samples.pickle')
-al_algo = reference_implementations.AlhajyaseenAlgorithm()
-for s in kitti_samples:
-    al_algo.predict(s)
-# al_algo = reference_implementations.AlhajyaseenAlgorithm()
-# # coords = al_algo._get_euler_spiral_line(23.0,18.0,np.array([0,1]))
-# plot_helper.plot_line('r',al_algo._get_curved_line(5.0, np.array([1,0.5]), np.array([0,1])))
-# # x, y = zip(*coords)
-# plt.axis('equal')
-# # plt.plot(x,y)
-# plt.show()
+
+feature_list = [
+    "intersection_angle",                       # Angle between entry and exit way
+    "maxspeed_entry",                           # Allowed maximum speed on entry way
+    "maxspeed_exit",                            # Allowed maximum speed on exit way
+    "lane_distance_entry_projected_normal",
+    "lane_distance_exit_projected_normal",
+    "oneway_entry",                             # Is entry way a oneway street?
+    "oneway_exit",                              # Is exit way a oneway street?
+    "curvature_entry",                          # Curvature of entry way over INT_DIST
+    "curvature_exit",                           # Curvature of exit way over INT_DIST
+    "bicycle_designated_entry",                 # Is there a designated bicycle way in the entry street?
+    "bicycle_designated_exit",                  # Is there a designated bicycle way in the exit street?
+    "lane_count_entry",                         # Total number of lanes in entry way
+    "lane_count_exit",                          # Total number of lanes in exit way
+    "has_right_of_way",                         # Does the vehicle with the respective manoeuver have right of way at the intersection?
+    "curve_secant_dist"                         # Shortest distance from curve secant to intersection center
+]
+
+kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10_08_rectified/samples.pickle')
+darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_15_10_20_darmstadt_rectified/samples.pickle')
+extract_features.select_label_method(kitti_samples, 'y_distances')
+extract_features.select_label_method(darmstadt_samples, 'y_distances')
+kitti_train_samples, test_samples = automatic_test.get_partitioned_samples(kitti_samples, 0.5)
+train_samples = kitti_train_samples + darmstadt_samples
+
+rf_algo = regressors.RandomForestAlgorithm(feature_list)
+al_algo = reference_implementations.AlhajyaseenAlgorithm(allow_rectification=False)
+is_algo = reference_implementations.InterpolatingSplineAlgorithm()
+algos = [rf_algo, al_algo, is_algo]
+results = automatic_test.test(algos, train_samples, test_samples)
+automatic_test.show_intersection_plot(results, test_samples, which_samples="best-worst-case", orientation="curve-secant")
