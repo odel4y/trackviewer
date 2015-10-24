@@ -122,8 +122,10 @@ class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
         return interpolating_spline_line
 
 class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
-    def __init__(self):
+    def __init__(self, allow_rectification=False, allow_actual_speed=True):
         self.name = 'Alhajyaseen Algorithm'
+        self.allow_rectification = allow_rectification # Move the line to accurately fit entry and exit distance
+        self.allow_actual_speed = allow_actual_speed # Use the actual vehicle entry speed
 
     def predict(self, sample):
         features = self._calculate_intersection_features(sample)
@@ -181,8 +183,12 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         curved_line = shapely.affinity.translate(curved_line, xoff=translation_vec[0], yoff=translation_vec[1])
 
         # Place exactly in intersection
-        desired_entry_distance = sample['X'][_feature_types.index('lane_distance_entry_projected_normal')]
-        desired_exit_distance = sample['X'][_feature_types.index('lane_distance_exit_projected_normal')]
+        if self.allow_rectification:
+            desired_entry_distance = sample['X'][_feature_types.index('lane_distance_entry_projected_normal')]
+            desired_exit_distance = sample['X'][_feature_types.index('lane_distance_exit_projected_normal')]
+        else:
+            desired_entry_distance = None
+            desired_exit_distance = None
         curved_line = rectify_prepared_data.rectify_line(curved_line, sample, desired_entry_distance, desired_exit_distance)
         return curved_line
 
@@ -250,7 +256,10 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         features['R_c'] = 3.0                       # Corner radius [m]
         features['theta'] = np.degrees(np.pi - np.abs(intersection_angle)) # intersection angle [deg]
         features['heavy_vehicle_dummy'] = 0.0       # Passenger car
-        features['V_in'] = sample['X'][_feature_types.index("vehicle_speed_entry")] # Approaching speed estimated [km/h]
+        self.allow_actual_speed:
+            features['V_in'] = sample['X'][_feature_types.index("vehicle_speed_entry")] # Approaching speed estimated [km/h]
+        else:
+            features['V_in'] = 30.0     # Dummy speed
 
         if intersection_angle >= 0.0:
             # Right turn in left hand traffic
