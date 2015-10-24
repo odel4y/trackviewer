@@ -22,14 +22,14 @@ def get_distributed_colors(number, colormap='Set1'):
     rgbcolors = [cmap(i) for i in np.linspace(0., 1., number)]
     return rgbcolors
 
-def plot_coords(x, y, color, label=None):
-    handle, = plt.plot(x,y, color=color, linestyle='-', label=label)
+def plot_coords(x, y, color, label=None, linestyle='-'):
+    handle, = plt.plot(x,y, color=color, linestyle=linestyle, label=label)
     return handle
 
-def plot_line(color, line, label=None):
+def plot_line(color, line, label=None, linestyle='-'):
     coords = list(line.coords)
     x,y = zip(*coords)
-    handle = plot_coords(x, y, color, label=label)
+    handle = plot_coords(x, y, color, label=label, linestyle=linestyle)
     return handle
 
 def plot_lines(color, *lines):
@@ -149,7 +149,7 @@ def plot_polar_probability_heatmap(predicted_proba, curve_secant, intersection_a
     p = ax.pcolormesh(X, Y, prediction, cmap="Oranges")
     plt.gcf().colorbar(p)
 
-def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_methods=[], additional_lines=[], heatmap=None, title=None, block=True, orientation="preserve"):
+def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_methods=[], additional_lines=[], heatmap=None, title=None, block=True, orientation="preserve", reference_lines=False):
     # normal_en, neg_normal_en = get_normal_to_line(entry_line, entry_line.length-INT_DIST, normalized=False, direction="both")
     # normal_ex, neg_normal_ex = get_normal_to_line(exit_line, INT_DIST, normalized=False, direction="both")
     csample = copy.deepcopy(sample)
@@ -207,14 +207,11 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
         p = ax.pcolormesh(X, Y, D, cmap="Oranges")
         plt.gcf().colorbar(p)
 
-    plot_lines('k', entry_line, exit_line, half_angle_line)
-    # plot_line('m', normal_en, normal_ex)
-    # plot_line('g', neg_normal_en, neg_normal_ex)
-    plot_line('k', curve_secant)
-    handles.append( plot_line('r', track_line, 'Measured Track') )
-    # handles.append( plot_line('b', get_predicted_line(csample, csample['y']), 'Measured Track Distances') )
+    plot_lines('k', entry_line, exit_line)
+    if reference_lines:
+        plot_line('k', curve_secant, half_angle_line)
+    handles.append( plot_line('r', track_line, 'Measured Track', linestyle='--') )
     plot_arrows_along_line('r', track_line)
-    # plot_arrows_along_line('b', get_predicted_line(csample, csample['y']))
 
     if predicted:
         if rgbcolors == []:
