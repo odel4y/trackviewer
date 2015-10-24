@@ -254,7 +254,7 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         features['R_c'] = 3.0                       # Corner radius [m]
         features['theta'] = np.degrees(np.pi - np.abs(intersection_angle)) # intersection angle [deg]
         features['heavy_vehicle_dummy'] = 0.0       # Passenger car
-        self.allow_actual_speed:
+        if self.allow_actual_speed:
             features['V_in'] = sample['X'][_feature_types.index("vehicle_speed_entry")] # Approaching speed estimated [km/h]
         else:
             features['V_in'] = 30.0     # Dummy speed
