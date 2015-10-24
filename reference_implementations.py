@@ -5,10 +5,8 @@ import numpy as np
 import scipy.interpolate
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
 import shapely.affinity
-from extract_features import extended_interpolate, get_normal_to_line, \
-            sample_line, _feature_types, get_offset_point_at_distance, extend_line, \
-            sample_line_all, get_tangent_vec_at, get_absolute_vec_angle, rotate_vec, \
-            get_vec_angle, get_normal_vec_at
+from extract_features import *
+from extract_features import _feature_types
 from constants import LANE_WIDTH, INT_DIST
 import rectify_prepared_data
 import automatic_test
@@ -95,20 +93,33 @@ class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
         self.name = 'Standard Interpolating Spline (k=2)'
 
     def predict(self, sample):
-        predicted_line = self.get_interpolating_spline_line(sample['geometry']['entry_line'], sample['geometry']['exit_line'])
+        predicted_line = self.get_interpolating_spline_line(sample)
         pred = sample_line_all(predicted_line,
                             sample['label']['selected_method'],
                             sample)
         return pred
 
-    def get_interpolating_spline_line(self, entry_line, exit_line):
-        w = LANE_WIDTH
-        far_entry_p =   get_offset_point_at_distance(entry_line, entry_line.length - 70.0, LANE_WIDTH/2)
-        entry_p2 =      get_offset_point_at_distance(entry_line, entry_line.length - w - 0.1, LANE_WIDTH/2) # Control point to ensure spline orientation with street
-        entry_p =       get_offset_point_at_distance(entry_line, entry_line.length - w, LANE_WIDTH/2)
-        exit_p =        get_offset_point_at_distance(exit_line, w, LANE_WIDTH/2)
-        exit_p2 =       get_offset_point_at_distance(exit_line, w + 0.1, LANE_WIDTH/2)
-        far_exit_p =    get_offset_point_at_distance(exit_line, 70.0, LANE_WIDTH/2)
+    def get_interpolating_spline_line(self, sample):
+        entry_line = sample['geometry']['entry_line']
+        exit_line = sample['geometry']['exit_line']
+        oneway_entry = float_to_boolean(sample['X'][_feature_types.index('oneway_entry')])
+        oneway_exit = float_to_boolean(sample['X'][_feature_types.index('oneway_exit')])
+        if oneway_entry:
+            distance_entry = 0.
+        else:
+            distance_entry = LANE_WIDTH/2
+        if oneway_exit:
+            distance_exit = 0.
+        else:
+            distance_exit = LANE_WIDTH/2
+
+        w = 2*LANE_WIDTH
+        far_entry_p =   get_offset_point_at_distance(entry_line, entry_line.length - 70.0, distance_entry)
+        entry_p2 =      get_offset_point_at_distance(entry_line, entry_line.length - w - 0.1, distance_entry) # Control point to ensure spline orientation with street
+        entry_p =       get_offset_point_at_distance(entry_line, entry_line.length - w, distance_entry)
+        exit_p =        get_offset_point_at_distance(exit_line, w, distance_exit)
+        exit_p2 =       get_offset_point_at_distance(exit_line, w + 0.1, distance_exit)
+        far_exit_p =    get_offset_point_at_distance(exit_line, 70.0, distance_exit)
         coords = [  list(far_entry_p.coords)[0],
                     list(entry_p2.coords)[0],
                     list(entry_p.coords)[0],
