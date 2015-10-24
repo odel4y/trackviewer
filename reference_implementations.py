@@ -130,14 +130,12 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
     def predict(self, sample):
         features = self._calculate_intersection_features(sample)
         A_1, A_2, R_min, V_min = self._calculate_curve_parameters(features, sample)
-        print "A_1:", A_1
-        print "A_2:", A_2
-        print "R_min:", R_min
 
         curved_line = self._get_curved_line(A_1, A_2, R_min, sample)
-
-        import plot_helper
-        plot_helper.plot_intersection(sample, additional_lines=[curved_line], orientation="curve-secant")
+        pred = sample_line_all(curved_line,
+                            sample['label']['selected_method'],
+                            sample)
+        return pred
 
     def _get_curved_line(self, A_1, A_2, R_min, sample):
         intersection_angle = sample['X'][_feature_types.index('intersection_angle')]
