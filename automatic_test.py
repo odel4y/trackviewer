@@ -171,7 +171,7 @@ def show_intersection_plot(results, test_samples, results_proba={}, which_algori
                             'min_radius': results_proba[algo]['min_radius'],
                             'max_radius': results_proba[algo]['max_radius']
                         })
-        plot_intersection(s, predicted_radii, predicted_proba, labels, plot_title, orientation=orientation)
+        plot_intersection(s, predicted_radii, labels=labels, title=plot_title, orientation=orientation)
 
 def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):
     print "Show graph plot..."
