@@ -4,11 +4,13 @@ from __future__ import division
 import numpy as np
 import scipy.interpolate
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
+import shapely.affinity
 from extract_features import extended_interpolate, get_normal_to_line, \
             sample_line, _feature_types, get_offset_point_at_distance, extend_line, \
             sample_line_all, get_tangent_vec_at, get_absolute_vec_angle, rotate_vec, \
             get_vec_angle, get_normal_vec_at
 from constants import LANE_WIDTH, INT_DIST
+import rectify_prepared_data
 import automatic_test
 
 def parametric_combined_spline(x, y, k=3, resolution=100, kv=None, s=None):
@@ -130,7 +132,10 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         print "A_2:", A_2
         print "R_min:", R_min
 
-        self._get_curved_line(A_1, A_2, R_min, sample)
+        curved_line = self._get_curved_line(A_1, A_2, R_min, sample)
+
+        import plot_helper
+        plot_helper.plot_intersection(sample, additional_lines=[curved_line], orientation="curve-secant")
 
     def _get_curved_line(self, A_1, A_2, R_min, sample):
         intersection_angle = sample['X'][_feature_types.index('intersection_angle')]
@@ -143,7 +148,7 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
 
         # Entering straight
         entry_tangent_vec = get_tangent_vec_at(entry_line, entry_line.length)
-        entry_straight_line = self._get_straight_line(entry_tangent_vec, 30.0)
+        entry_straight_line = self._get_straight_line(entry_tangent_vec, 50.0)
 
         # Entering Euler spiral
         entry_euler_line = self._get_euler_spiral_line(R_min, ang_sign*A_1, entry_tangent_vec)
@@ -158,10 +163,28 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         circular_line = self._get_circular_line(R_min, normal1, normal2)
 
         # Exiting straight line
-        exit_straight_line = self._get_straight_line(-exit_tangent_vec, 30.0)
+        exit_straight_line = self._get_straight_line(-exit_tangent_vec, 50.0)
 
         # Join segments
         curved_line = self._join_segments(entry_straight_line, entry_euler_line, circular_line, exit_euler_line, exit_straight_line)
+
+        # Place in intersection
+        curved_line = self._place_line_in_intersection(curved_line, sample)
+
+        return curved_line
+
+    def _place_line_in_intersection(self, curved_line, sample):
+        # Move line to approximate location of intersection
+        entry_line = sample['geometry']['entry_line']
+        curve_peak_coord = np.array(curved_line.interpolate(0.5, normalized=True).coords[0])
+        translation_vec = np.array(entry_line.coords[-1]) - curve_peak_coord
+        curved_line = shapely.affinity.translate(curved_line, xoff=translation_vec[0], yoff=translation_vec[1])
+
+        # Place exactly in intersection
+        desired_entry_distance = sample['X'][_feature_types.index('lane_distance_entry_projected_normal')]
+        desired_exit_distance = sample['X'][_feature_types.index('lane_distance_exit_projected_normal')]
+        curved_line = rectify_prepared_data.rectify_line(curved_line, sample, desired_entry_distance, desired_exit_distance)
+        return curved_line
 
     def _join_segments(self, entry_straight_line, entry_euler_line, circular_line, exit_euler_line, exit_straight_line):
         entry_sl_coords = np.array(entry_straight_line.coords[:])
@@ -180,15 +203,6 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
             exit_el_coords[1:] + circ_l_coords[-1] + entry_el_coords[-1] + entry_sl_coords[1],
             exit_sl_coords + circ_l_coords[-1] + entry_el_coords[-1] + entry_sl_coords[1] + exit_el_coords[-1]
         ))
-
-        import matplotlib.pyplot as plt
-        import plot_helper
-        plot_helper.plot_line('r', LineString([tuple(row) for row in joined_coords]))
-        # plot_helper.plot_line('r', LineString([tuple(row) for row in entry_el_coords[:-1]]))
-        # plot_helper.plot_line('g', LineString([tuple(row) for row in circ_l_coords + entry_el_coords[-1]]))
-        # plot_helper.plot_line('b', LineString([tuple(row) for row in exit_el_coords[1:] + circ_l_coords[-1] + entry_el_coords[-1]]))
-        plt.axis('equal')
-        plt.show()
 
         return LineString([tuple(row) for row in joined_coords])
 
