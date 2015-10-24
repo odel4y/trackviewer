@@ -185,6 +185,7 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
         csample['geometry']['track_line'] = track_line
         half_angle_line = affinity.rotate(half_angle_line, phi, origin=rot_c, use_radians=True)
         csample['geometry']['half_angle_line'] = half_angle_line
+        additional_lines = [affinity.rotate(al, phi, origin=rot_c, use_radians=True) for al in additional_lines]
 
     handles = []
     fig = plt.figure()
@@ -228,7 +229,7 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
             handles.append( plot_line(color, line, label) )
 
     for line in additional_lines:
-        plot_line('k', line)
+        plot_line('b', line)
 
     plt.legend(handles=handles)
     if title: plt.title(title)
