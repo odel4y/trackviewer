@@ -34,7 +34,7 @@ kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10
 darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_15_10_20_darmstadt_rectified/samples.pickle')
 extract_features.select_label_method(kitti_samples, 'y_distances')
 extract_features.select_label_method(darmstadt_samples, 'y_distances')
-kitti_train_samples, test_samples = automatic_test.get_partitioned_samples(kitti_samples, 0.5)
+kitti_train_samples, test_samples = automatic_test.get_partitioned_samples(kitti_samples, 0.6)
 train_samples = kitti_train_samples + darmstadt_samples
 
 rf_algo = regressors.RandomForestAlgorithm(feature_list)

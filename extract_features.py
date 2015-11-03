@@ -453,8 +453,9 @@ def get_vehicle_speed(way_line, dist, track):
     time_delta = track[track_i2][2] - track[track_i][2]
     time_sec_delta = time_delta.total_seconds()
     dist = track_line.project(Point(track_line.coords[track_i])) - track_line.project(track_p2)
-    dist = track_p.distance(track_p2)
-    return abs(dist/time_sec_delta*3.6)
+    # dist = track_p.distance(track_p2)
+    # Achtung!!! Korrekturfaktor der Geschwindigkeit wegen vemutlich Bug im Code
+    return abs(dist/time_sec_delta*3.6/1.5)
 
 def upsample_line(line, times):
     """Simply interpolate more points in a LineString to have sample_rate times coordinates"""

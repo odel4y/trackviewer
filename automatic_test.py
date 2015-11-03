@@ -52,25 +52,47 @@ def get_partitioned_samples(samples, train_ratio, randomized=False):
     test_samples = [samples[i] for i in test_indices]
     return train_samples, test_samples
 
-def get_cross_validation_samples(samples, train_ratio, number, randomized=False):
-    """Get several randomized train and test sets for cross validation"""
+# def get_cross_validation_samples(samples, train_ratio, number, randomized=False):
+#     """Get several randomized train and test sets for cross validation"""
+#     sample_count = len(samples)
+#     print "Total number of samples:", sample_count
+#     train_sample_count = int(round(sample_count * train_ratio))
+#     indices = range(sample_count)
+#     if randomized == True:
+#         random.shuffle(indices)
+#     test_sample_count = sample_count - train_sample_count
+#     train_samples = []
+#     test_samples = []
+#     for i in range(number):
+#         i1 = int((sample_count - test_sample_count)/number)*i
+#         i2 = i1 + test_sample_count
+#         test_indices = indices[i1:i2]
+#         train_indices = indices[:i1] + indices[i2:]
+#         test_samples.append([samples[i] for i in test_indices])
+#         train_samples.append([samples[i] for i in train_indices])
+#     return train_samples, test_samples
+
+def get_cross_validation_samples(samples, slice_number, randomized=False):
     sample_count = len(samples)
     print "Total number of samples:", sample_count
-    train_sample_count = int(round(sample_count * train_ratio))
     indices = range(sample_count)
     if randomized == True:
         random.shuffle(indices)
-    test_sample_count = sample_count - train_sample_count
-    train_samples = []
-    test_samples = []
-    for i in range(number):
-        i1 = int((sample_count - test_sample_count)/number)*i
-        i2 = i1 + test_sample_count
-        test_indices = indices[i1:i2]
-        train_indices = indices[:i1] + indices[i2:]
-        test_samples.append([samples[i] for i in test_indices])
-        train_samples.append([samples[i] for i in train_indices])
-    return train_samples, test_samples
+    part_len = int(sample_count/slice_number)
+    parts = [samples[i*part_len:(i+1)*part_len] for i in range(slice_number)]
+    # Also add remaining samples that didnt fit in even slices to last part
+    remaining_samples = sample_count % slice_number
+    if remaining_samples > 0:
+        parts[-1].extend(samples[-remaining_samples:])
+
+    train_sample_sets, test_sample_sets = [], []
+    for i in range(slice_number):
+        train_samples = []
+        for l in parts[:i] + parts[(i+1):]:
+            train_samples.extend(l)
+        train_sample_sets.append( train_samples )
+        test_sample_sets.append( parts[i] )
+    return train_sample_sets, test_sample_sets
 
 def train(algorithms, train_samples):
     for algo in algorithms:

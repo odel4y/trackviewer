@@ -65,6 +65,7 @@ for train_samples_distances, test_samples_distances, train_samples_radii, test_s
                             [prediction, prediction_radii],
                             rgbcolors=['b', 'c'],
                             label_methods=['y_distances', 'y_radii'],
+                            labels=['distances', 'radii'],
                             title=sample['pickled_filename'],
                             heatmap=heatmap,
                             orientation="curve-secant")

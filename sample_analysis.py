@@ -72,7 +72,7 @@ def plot_sample_intersection_curvature(samples, title="Sample curvature over int
     plt.show()
 
 if __name__ == "__main__":
-    samples = automatic_test.load_samples('data/training_data/samples.pickle')
+    samples = automatic_test.load_samples('data/training_data/samples_15_10_08/samples.pickle')
     print 'Sample count:', len(samples)
     oneway_entry = list(get_array_from_feature(samples, 'oneway_entry'))
     print 'oneway_entry: Yes: %d No: %d' % (oneway_entry.count(1.0), oneway_entry.count(-1.0))

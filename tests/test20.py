@@ -43,7 +43,7 @@ print "------ KITTI + Darmstadt ------"
 automatic_test.test([rf_algo], train_samples, test_samples, cross_validation=False)
 
 print "###### Rectified data ######"
-kitti_samples_rectified = automatic_test.load_samples('../data/training_data/samples_15_10_12_rectified/samples.pickle')
+kitti_samples_rectified = automatic_test.load_samples('../data/training_data/samples_15_10_08_rectified/samples.pickle')
 darmstadt_samples_rectified = automatic_test.load_samples('../data/training_data/samples_15_10_20_darmstadt_rectified/samples.pickle')
 extract_features.select_label_method(kitti_samples_rectified, 'y_distances')
 extract_features.select_label_method(darmstadt_samples_rectified, 'y_distances')
