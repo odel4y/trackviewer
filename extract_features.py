@@ -1010,9 +1010,12 @@ def get_rectified_mse(y_pred, label_method, sample):
         try:
             distances.append(get_lane_distance_projected_normal(pred_line, dist, sample['geometry']['track_line']))
         except NoIntersectionError as e:
+            # print e
+            # print 'Skipping this coordinate'
+            # continue
             print e
-            print 'Skipping this coordinate'
-            continue
+            print 'Taking closest distance instead'
+            # pred_line.interpolate()
     return np.mean(np.power(np.array(distances), 2))
 
 def get_osm(int_sit):

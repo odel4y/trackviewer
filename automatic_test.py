@@ -12,6 +12,8 @@ import pickle
 import itertools
 import numpy as np
 from plot_helper import plot_intersection, plot_graph
+import copy
+import matplotlib.pyplot as plt
 
 class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
@@ -110,8 +112,8 @@ def predict(algorithms, test_samples):
         for s in test_samples:
             y_true = s['y']
             y_pred = algo.predict(s)
-            # mse = mean_squared_error(y_true, y_pred)
-            mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
+            mse = mean_squared_error(y_true, y_pred)
+            # mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
             results[algo]['predictions'].append(y_pred)
             results[algo]['mse'].append(mse)
     return results
@@ -148,8 +150,8 @@ def predict_all_estimators(algorithms, test_samples):
         for s in test_samples:
             y_true = s['y']
             y_pred = algo.predict(s)
-            # mse = mean_squared_error(y_true, y_pred)
-            mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
+            mse = mean_squared_error(y_true, y_pred)
+            # mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
             all_estimators_pred = algo.predict_all_estimators(s)
             results[algo]['predictions'].append(y_pred)
             results[algo]['mse'].append(mse)
@@ -266,7 +268,7 @@ def output_formatted_result(results, output="console"):
             print 'Minimum MSE:\t%.2f' % rs['min_mse']
             print 'Maximum MSE:\t%.2f' % rs['max_mse']
 
-def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False):
+def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False, print_results=True):
     """General prediction quality test for algorithms with the option of cross validation"""
     results = []
     if not cross_validation:
@@ -285,7 +287,8 @@ def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False
         for algo in result:
             flattened_results[algo]['predictions'].extend(result[algo]['predictions'])
             flattened_results[algo]['mse'].extend(result[algo]['mse'])
-    output_formatted_result(flattened_results)
+    if print_results:
+        output_formatted_result(flattened_results)
     return flattened_results
 
 def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, features, min_num_features=4, raise_feature_num=False, cross_validation=False):
@@ -344,3 +347,19 @@ def load_samples(fn):
     with open(fn, 'r') as f:
         samples = pickle.load(f)
     return samples
+
+def test_parameter_variations(algo_class, args, varying_parameter, values, train_set, test_set, runs=1):
+    """Test parameter variations on algo class"""
+    params_mse = np.zeros((runs, len(values)))
+    for run_i in xrange(runs):
+        print "====== Run %d ======" % (run_i+1)
+        for i, val in enumerate(values):
+            print "%s = %d" % (varying_parameter, val)
+            new_args = args.copy()
+            new_args[varying_parameter] = val
+            algo = algo_class(**new_args)
+            results = test([algo], train_set, test_set, print_results=False)
+            rs = get_result_statistics(results)
+            params_mse[run_i][i] = rs[algo]['average_mse']
+    params_mse = np.mean(params_mse, axis=0)
+    return params_mse
