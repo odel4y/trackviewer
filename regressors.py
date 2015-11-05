@@ -58,19 +58,18 @@ def get_steps_from_sample(sample):
     return steps
 
 class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
-    def __init__(self, features, n_estimators=10, single_target_variable=False):
+    def __init__(self, features=[], single_target_variable=False, **regressor_args):
         self.name = 'Random Forest Regressor (Scikit)'
         _check_feature_availability(features)
 
         self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
         self.features = features
-        self.n_estimators = n_estimators
         self.single_target_variable = single_target_variable
+        self.regressor = sklearn.ensemble.RandomForestRegressor(**regressor_args)
 
     def train(self, samples):
         X, y = extract_features.get_matrices_from_samples(samples)
         X = filter_feature_matrix(X, self.features)
-        self.regressor = sklearn.ensemble.RandomForestRegressor(n_estimators=self.n_estimators)
         if self.single_target_variable:
             self.steps = get_steps_from_sample(samples[0])
             X, y = make_single_target_variable(X, self.steps, y)
