@@ -13,6 +13,7 @@ from scipy.sparse import issparse
 from sklearn.ensemble.forest import _parallel_helper
 import automatic_test
 import extract_features
+from constants import INT_DIST
 
 def filter_feature_matrix(X, features):
     feature_indices = [extract_features._feature_types.index(f) for f in features]
@@ -24,25 +25,67 @@ def _check_feature_availability(features):
         if f not in extract_features._feature_types:
             raise NotImplementedError("Feature %s is not available" % f)
 
+def make_single_target_variable(X, steps, y=None):
+    """Convert a y-Matrix into a vector containing only one target variable while
+    adding a steps feature with the angle/distance to X. Steps are the gamma or s steps for the corresponding y variables"""
+    n_samples, m_features = X.shape
+    m_tv = len(steps)
+    X_new = np.reshape(np.tile(X, (1, m_tv)), (m_tv*n_samples, m_features))
+    X_new = np.hstack((X_new, np.transpose(np.tile(steps, (1, n_samples)))))
+    if y != None:
+        y_new = np.reshape(y, (1, m_tv*n_samples))[0]
+    else:
+        y_new = None
+    return X_new, y_new
+
+def make_multiple_target_variable(y, steps):
+    m_tv = len(steps)
+    n_samples = y.shape[0]/m_tv
+    y_new = np.reshape(y, (n_samples, m_tv))
+    return y_new
+
+def get_steps_from_sample(sample):
+    """Induce the used step vector from a sample"""
+    mode = sample['label']['selected_method']
+    m_tv = len(sample['y'])
+
+    if mode == 'y_radii':
+        steps = np.linspace(0., np.pi, m_tv)
+    elif mode == 'y_distances':
+        steps = np.linspace(0., 2*INT_DIST, m_tv)
+    else:
+        raise NotImplementedError()
+    return steps
+
 class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
-    def __init__(self, features, n_estimators=10):
+    def __init__(self, features, n_estimators=10, single_target_variable=False):
         self.name = 'Random Forest Regressor (Scikit)'
         _check_feature_availability(features)
 
         self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
         self.features = features
         self.n_estimators = n_estimators
+        self.single_target_variable = single_target_variable
 
     def train(self, samples):
         X, y = extract_features.get_matrices_from_samples(samples)
         X = filter_feature_matrix(X, self.features)
         self.regressor = sklearn.ensemble.RandomForestRegressor(n_estimators=self.n_estimators)
+        if self.single_target_variable:
+            self.steps = get_steps_from_sample(samples[0])
+            X, y = make_single_target_variable(X, self.steps, y)
         self.regressor.fit(X, y)
 
     def predict(self, sample):
         X, _ = extract_features.get_matrices_from_samples([sample])
         X = filter_feature_matrix(X, self.features)
-        return self.regressor.predict(X)[0]
+        if self.single_target_variable:
+            X, _ = make_single_target_variable(X, self.steps)
+            y = self.regressor.predict(X)
+            y = make_multiple_target_variable(y, self.steps)
+            return y[0]
+        else:
+            return self.regressor.predict(X)[0]
 
     def predict_all_estimators(self, sample):
         """Get the prediction of every estimator separated"""
