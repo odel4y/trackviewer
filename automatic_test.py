@@ -14,6 +14,7 @@ import numpy as np
 from plot_helper import plot_intersection, plot_graph
 import copy
 import matplotlib.pyplot as plt
+# import pdb; pdb.set_trace()
 
 class PredictionAlgorithm(object):
     __metaclass__ = ABCMeta
@@ -195,6 +196,7 @@ def show_intersection_plot(results, test_samples, results_proba={}, which_algori
                             'min_radius': results_proba[algo]['min_radius'],
                             'max_radius': results_proba[algo]['max_radius']
                         })
+        output_sample_features(s)
         plot_intersection(s, predicted_radii, labels=labels, title=plot_title, orientation=orientation)
 
 def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):

@@ -67,19 +67,10 @@ class RBFValley:
         return np.sum(np.exp(- np.power(self._epsilon * R, 2)))
 
 def get_heatmap_from_polar_all_predictors(predictions, curve_secant, intersection_angle):
-    # Set up the RBF Interpolator
-    angle_steps = np.linspace(0., np.pi, SAMPLE_RESOLUTION)
-    rbfPhi = []
-    rbfR = []
-    for pred in predictions:
-        rbfPhi.extend(list(angle_steps))
-        rbfR.extend(list(pred))
-    rbfi = RBFValley(rbfPhi, rbfR, 1.0)
-
     # Set up the grid to sample the RBF at
     r_min = 2.0
-    r_max = 30.0
-    r_resolution = 60
+    r_max = 25.0
+    r_resolution = 100
     phi_min = 0.0
     phi_max = np.pi
     phi_resolution = 100
@@ -87,10 +78,22 @@ def get_heatmap_from_polar_all_predictors(predictions, curve_secant, intersectio
     Phi = np.tile(np.linspace(phi_min, phi_max, phi_resolution), (r_resolution, 1))
     D = np.zeros((np.shape(Phi)[0]-1, np.shape(Phi)[1]-1))
 
+    # Set up the RBF Interpolator
+    angle_steps = np.linspace(0., np.pi, SAMPLE_RESOLUTION)
+    rbfPhi = []
+    rbfR = []
+    for pred in predictions:
+        rbfPhi.extend(list(angle_steps))
+        rbfR.extend(list(pred))
+    # Scale factor to balance the coordinate influence in determination of r for rbf
+    scale_phi = 0.5*(r_min + r_max) #1/(phi_max - phi_min)
+    scale_r = 1#/(r_max - r_min)
+    rbfi = RBFValley(np.array(rbfPhi)*scale_phi, np.array(rbfR)*scale_r, 0.7)
+
     # Sample the RBF
     for j in range(np.shape(Phi)[0]-1):
         for k in range(np.shape(Phi)[1]-1):
-            D[j,k] = rbfi(Phi[j,k], R[j,k])
+            D[j,k] = rbfi(scale_phi*Phi[j,k], scale_r*R[j,k])
 
     # Transform RBF grid into XY-Space for heatmap
     X, Y = get_cartesian_from_polar(R, Phi, curve_secant, intersection_angle)
