@@ -14,7 +14,7 @@ from math import copysign
 import numpy as np
 import copy
 import pdb
-from constants import INT_DIST, SAMPLE_RESOLUTION, MAX_OSM_TRIES, LANE_WIDTH
+from constants import INT_DIST, SAMPLE_RESOLUTION, MAX_OSM_TRIES, LANE_WIDTH, SAMPLE_ANALYSIS
 from datetime import datetime, timedelta
 
 _feature_types = [
@@ -327,17 +327,20 @@ def get_maxspeed(way):
                 return float(args[0])
     else:
         # If no tag maxspeed is found try to guess it
-        way_name = way["tags"]["name"]
-        way_name = way_name.encode('ascii', 'ignore')
-        if way["tags"]["highway"] in ["primary", "secondary", "tertiary"]:
-            # It is a larger street so 50km/h as maxspeed is assumable
-            print 'Assuming maxspeed 50km/h for %s (ID: %d) (highway=%s)' % (way_name, way["id"], way["tags"]["highway"])
-            return 50.0
-        elif way["tags"]["highway"] in ["residential", "unclassified"]:
-            print 'Assuming maxspeed 30km/h for %s (ID: %d) (highway=%s)' % (way_name, way["id"], way["tags"]["highway"])
-            return 30.0
+        if not SAMPLE_ANALYSIS:
+            way_name = way["tags"]["name"]
+            way_name = way_name.encode('ascii', 'ignore')
+            if way["tags"]["highway"] in ["primary", "secondary", "tertiary"]:
+                # It is a larger street so 50km/h as maxspeed is assumable
+                print 'Assuming maxspeed 50km/h for %s (ID: %d) (highway=%s)' % (way_name, way["id"], way["tags"]["highway"])
+                return 50.0
+            elif way["tags"]["highway"] in ["residential", "unclassified"]:
+                print 'Assuming maxspeed 30km/h for %s (ID: %d) (highway=%s)' % (way_name, way["id"], way["tags"]["highway"])
+                return 30.0
+            else:
+                raise MaxspeedMissingError(u"No maxspeed could be found for %s (ID: %d)" % (way_name, way["id"]))
         else:
-            raise MaxspeedMissingError(u"No maxspeed could be found for %s (ID: %d)" % (way_name, way["id"]))
+            return 0.0
 
 def get_oneway(way):
     """Determine whether way is a oneway street"""
@@ -364,12 +367,15 @@ def get_lane_count(way):
             lanes = 2
         return lanes
     else:
-        if get_oneway(way):
-            print "Guessing 1 lane -> oneway"
-            return 1
+        if not SAMPLE_ANALYSIS:
+            if get_oneway(way):
+                print "Guessing 1 lane -> oneway"
+                return 1
+            else:
+                print "Guessing 2 lanes"
+                return 2
         else:
-            print "Guessing 2 lanes"
-            return 2
+            return 0
 
 def get_curve_secant_dist(entry_line, curve_secant):
     """Calculate shortest distance from curve secant to intersection center"""
