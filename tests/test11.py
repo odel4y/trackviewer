@@ -15,8 +15,10 @@ import matplotlib.pyplot as plt
 feature_list = _feature_types
 
 rf_algo = regressors.RandomForestAlgorithm(feature_list)
-samples = automatic_test.load_samples('../data/training_data/samples.pickle')
-# samples = automatic_test.normalize_features(samples)
+kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10_08_rectified/samples.pickle')
+darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_15_10_20_darmstadt_rectified/samples.pickle')
+samples = kitti_samples + darmstadt_samples
+
 select_label_method(samples, 'y_distances')
 automatic_test.train([rf_algo], samples)
 # Extract importances

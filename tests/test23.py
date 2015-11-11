@@ -39,7 +39,8 @@ extract_features.select_label_method(kitti_samples, 'y_distances')
 extract_features.select_label_method(darmstadt_samples, 'y_distances')
 samples = kitti_samples + darmstadt_samples
 
-rf_algo = regressors.RandomForestAlgorithm(feature_list)
+# rf_algo = regressors.RandomForestAlgorithm(feature_list)
+rf_algo = regressors.RandomForestAlgorithm(feature_list, single_target_variable=False, max_leaf_nodes=20, n_estimators=80)
 
 N_training_samples = 110
 N_cv_samples = len(samples) - N_training_samples

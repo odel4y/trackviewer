@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #coding:utf-8
-# Test the AlhajyaseenAlgorithm
+# Testing out different parameters of RandomForestRegressor and their performance
 import sys
 sys.path.append('../')
 import automatic_test
@@ -31,19 +31,29 @@ feature_list = [
     "curve_secant_dist"                         # Shortest distance from curve secant to intersection center
 ]
 
-kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10_08/samples.pickle')
-darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_15_10_20_darmstadt/samples.pickle')
-random.shuffle(kitti_samples)
-random.shuffle(darmstadt_samples)
+random.seed(42)
+
+kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10_08_rectified/samples.pickle')
+darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_15_10_20_darmstadt_rectified/samples.pickle')
 extract_features.select_label_method(kitti_samples, 'y_distances')
 extract_features.select_label_method(darmstadt_samples, 'y_distances')
-kitti_train_samples, test_samples = automatic_test.get_partitioned_samples(kitti_samples, 0.6)
-train_samples = kitti_train_samples + darmstadt_samples
+random.shuffle(kitti_samples)
+random.shuffle(darmstadt_samples)
+kitti_train_samples, kitti_test_samples = automatic_test.get_partitioned_samples(kitti_samples, 0.7)
+darmstadt_train_samples, darmstadt_test_samples = automatic_test.get_partitioned_samples(darmstadt_samples, 0.7)
+train_samples = kitti_train_samples + darmstadt_train_samples
+test_samples = kitti_test_samples + darmstadt_test_samples
 
-rf_algo = regressors.RandomForestAlgorithm(feature_list, single_target_variable=False)
-al_algo = reference_implementations.AlhajyaseenAlgorithm(allow_rectification=True)
-is_algo = reference_implementations.InterpolatingSplineAlgorithm()
-algos = [rf_algo, al_algo, is_algo]
-results = automatic_test.test(algos, train_samples, test_samples)
-# automatic_test.show_intersection_plot(results, test_samples, which_samples="best-worst-case", orientation="curve-secant")
-automatic_test.show_intersection_plot(results, test_samples, which_samples="worst-case", orientation="curve-secant")
+parameter = "max_depth"
+values = np.arange(1,40,2)
+runs = 10
+params_mse = automatic_test.test_parameter_variations(regressors.RandomForestAlgorithm, {"features":feature_list, "random_state":random}, parameter, values, train_samples, test_samples, runs)
+plt.plot(values, params_mse, 'b.-')
+plt.xlabel(parameter)
+plt.show()
+
+# rf_algo = regressors.RandomForestAlgorithm(feature_list, single_target_variable=False, n_estimators=80)
+# algos = [rf_algo]
+# results = automatic_test.test(algos, train_samples, test_samples)
+# # automatic_test.show_intersection_plot(results, test_samples, which_samples="best-worst-case", orientation="curve-secant")
+# automatic_test.show_intersection_plot(results, test_samples, which_samples="worst-case", orientation="curve-secant")
