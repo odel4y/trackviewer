@@ -4,7 +4,7 @@ from __future__ import division
 import automatic_test
 import numpy as np
 import extract_features
-from extract_features import _feature_types
+from extract_features import *
 # import matplotlib.pyplot as plt
 import seaborn as sns
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
@@ -12,10 +12,36 @@ import pandas
 from constants import INT_DIST
 import plot_helper
 import sys
+import pickle
 
 # matplotlib.rcParams.update({'font.size': 28})
 sns.set_context("paper", font_scale=1.8)
 sns.plt.rc("figure", figsize=[12,6])
+
+def get_average_speed_of_sample(sample):
+    fn = sample['pickled_filename']
+    with open(fn, 'r') as f:
+        int_sit = pickle.load(f)
+    track = extract_features.transform_track_to_cartesian(int_sit['track'])
+    track_line = sample['geometry']['track_line']
+    entry_line = sample['geometry']['entry_line']
+    exit_line = sample['geometry']['exit_line']
+
+    dist_p1 = extended_interpolate(entry_line, entry_line.length-INT_DIST)
+    normal1 = extend_line(get_normal_to_line(entry_line, entry_line.length-INT_DIST), 1000.0, direction="both")
+    track_p1 = find_closest_intersection(normal1, dist_p1, track_line)
+    track_i1 = find_nearest_coord_index(track_line, track_p1)
+
+    dist_p2 = extended_interpolate(exit_line, INT_DIST)
+    normal2 = extend_line(get_normal_to_line(exit_line, INT_DIST), 1000.0, direction="both")
+    track_p2 = find_closest_intersection(normal2, dist_p2, track_line)
+    track_i2 = find_nearest_coord_index(track_line, track_p2)
+
+    time_delta = (track[track_i2][2] - track[track_i1][2]).total_seconds()
+    min_i, max_i = min(track_i1, track_i2), max(track_i1, track_i2)
+    dist = np.sum(np.linalg.norm(np.diff(np.array([(x, y) for (x, y, _) in track[min_i: max_i+1]]), axis=0), axis=1))
+
+    return abs(dist/time_delta*3.6)
 
 def get_array_from_feature(samples, feature):
     feature_i = extract_features._feature_types.index(feature)
@@ -197,7 +223,7 @@ if __name__ == "__main__":
             ax.set_ylabel("")
         # sns.plt.title("KITTI + Karlsruhe")
     sns.plt.show(figure4)
-    # # Track curvatures
+    # Track curvatures
     # figure5, axes5 = sns.plt.subplots(1, 2)
     # for i, (name, samples) in enumerate(dataset_samples):
     #     l_samples = [s for s in samples if s['X'][_feature_types.index('intersection_angle')] >= 0.]
@@ -213,14 +239,18 @@ if __name__ == "__main__":
     figure6, axes6 = sns.plt.subplots(1, 2, sharey=True)
     for i, (name, samples) in enumerate(dataset_samples):
         ax = axes6[i]
+        for s in samples:
+            print get_average_speed_of_sample(s)
         maxspeed_entry = get_array_from_feature(samples, 'maxspeed_entry')
         maxspeed_exit = get_array_from_feature(samples, 'maxspeed_exit')
         vehicle_speed_entry = get_array_from_feature(samples, 'vehicle_speed_entry')
         vehicle_speed_exit = get_array_from_feature(samples, 'vehicle_speed_exit')
+        diff_speed_entry = [vs - ms for vs, ms in zip(maxspeed_entry, vehicle_speed_entry) if ms != 0.0]
+        diff_speed_exit = [vs - ms for vs, ms in zip(maxspeed_exit, vehicle_speed_exit) if ms != 0.0]
         # mean_err_entry = np.mean(np.abs(vehicle_speed_entry-maxspeed_entry))
         # std_err_entry = np.std(np.abs(vehicle_speed_entry-maxspeed_entry))
         # mean_err_exit = np.mean(np.abs(vehicle_speed_exit-maxspeed_exit))
         # std_err_exit = np.std(np.abs(vehicle_speed_exit-maxspeed_exit))
-        sns.distplot(vehicle_speed_entry - maxspeed_entry, bins=20, kde=False, rug=True, ax=ax)
+        sns.distplot(diff_speed_entry, bins=20, kde=False, rug=True, ax=ax)
         ax.set_xlabel("Geschwindigkeitsfehler")
     sns.plt.show(figure6)
