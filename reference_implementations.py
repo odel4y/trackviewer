@@ -8,7 +8,6 @@ import shapely.affinity
 from extract_features import *
 from extract_features import _feature_types
 from constants import LANE_WIDTH, INT_DIST
-import rectify_prepared_data
 import automatic_test
 
 def parametric_combined_spline(x, y, k=3, resolution=100, kv=None, s=None):
@@ -94,10 +93,15 @@ class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
 
     def predict(self, sample):
         predicted_line = self.get_interpolating_spline_line(sample)
-        pred = sample_line_all(predicted_line,
-                            sample['label']['selected_method'],
-                            sample)
-        return pred
+        try:
+            pred = sample_line_all(predicted_line,
+                                sample['label']['selected_method'],
+                                sample)
+            return pred
+        except:
+            import plot_helper
+            automatic_test.output_sample_features(sample)
+            plot_helper.plot_intersection(sample, additional_lines=[predicted_line])
 
     def get_interpolating_spline_line(self, sample):
         entry_line = sample['geometry']['entry_line']
@@ -193,12 +197,12 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
 
         # Place exactly in intersection
         if self.allow_rectification:
-            desired_entry_distance = sample['X'][_feature_types.index('lane_distance_entry_projected_normal')]
-            desired_exit_distance = sample['X'][_feature_types.index('lane_distance_exit_projected_normal')]
+            desired_entry_distance = sample['X'][_feature_types.index("track_distance_projected_along_normal_entry")]
+            desired_exit_distance = sample['X'][_feature_types.index("track_distance_projected_along_normal_exit")]
         else:
             desired_entry_distance = None
             desired_exit_distance = None
-        curved_line = rectify_prepared_data.rectify_line(curved_line, sample, desired_entry_distance, desired_exit_distance)
+        curved_line = rectify_line(curved_line, sample['geometry']['entry_line'], sample['geometry']['exit_line'], False, False, desired_entry_distance, desired_exit_distance)
         return curved_line
 
     def _join_segments(self, entry_straight_line, entry_euler_line, circular_line, exit_euler_line, exit_straight_line):
