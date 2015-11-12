@@ -611,18 +611,22 @@ def get_reversed_line(way_line):
 
 def get_total_line_curvature(way_line):
     """Get the curvature of a line over INT_DIST"""
-    tangent_vec1 = get_tangent_vec_at(way_line, 0.0)
-    tangent_vec2 = get_tangent_vec_at(way_line, INT_DIST)
-    d_angle = get_vec_angle(tangent_vec1, tangent_vec2)
+    normal1 = get_normal_to_line(way_line, 0.0)
+    normal2 = get_normal_to_line(way_line, INT_DIST)
+    vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
+    vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
+    d_angle = get_vec_angle(vec1, vec2)
     return d_angle/INT_DIST
 
 def get_curvature_at(way_line, dist, normalized=False):
     """Get the curvature of a line at dist"""
     if normalized: dist = dist * way_line.length
     measure_interval_len = 2.0      # Interval length on which the curvature is calculated [m]
-    tangent_vec1 = get_tangent_vec_at(way_line, dist - measure_interval_len/2.0)
-    tangent_vec2 = get_tangent_vec_at(way_line, dist + measure_interval_len/2.0)
-    d_angle = get_vec_angle(tangent_vec1, tangent_vec2)
+    normal1 = get_normal_to_line(way_line, dist - measure_interval_len/2.0)
+    normal2 = get_normal_to_line(way_line, dist + measure_interval_len/2.0)
+    vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
+    vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
+    d_angle = get_vec_angle(vec1, vec2)
     return d_angle/measure_interval_len
 
 def get_line_curvature(way_line, sample_steps=100):
@@ -630,12 +634,15 @@ def get_line_curvature(way_line, sample_steps=100):
     measure_interval_len = way_line.length / (sample_steps - 1)
     curvature_list = np.zeros((1,sample_steps))
 
-    tangent_vec1 = get_tangent_vec_at(way_line, 0.0 - measure_interval_len/2.0)
+    normal1 = get_normal_to_line(way_line, 0.0 - measure_interval_len/2.0)
+    vec1 = np.array(normal1.coords[1]) - np.array(normal1.coords[0])
     for i in range(sample_steps):
-        tangent_vec2 = get_tangent_vec_at(way_line, (float(i) + 0.5)*measure_interval_len)
-        d_angle = get_vec_angle(tangent_vec1, tangent_vec2)
+        normal2 = get_normal_to_line(way_line, (float(i) + 0.5)*measure_interval_len)
+        vec2 = np.array(normal2.coords[1]) - np.array(normal2.coords[0])
+        d_angle = get_vec_angle(vec1, vec2)
         curvature_list[0,i] = d_angle/measure_interval_len
-        tangent_vec1 = tangent_vec2
+        normal1 = normal2
+        vec1 = vec2
     return curvature_list
 
 def get_normal_to_line(line, dist, normalized=False, direction="forward"):
@@ -665,7 +672,7 @@ def rotate_vec(vec, phi):
     return rotate_xy(vec, phi, (0.,0.))
 
 def get_absolute_vec_angle(vec):
-    """Convenience function to determine absolute angle of vec to origin"""
+    """Convenience function to determine absolute angle of vec"""
     return get_vec_angle(np.array([1,0]), vec)
 
 def get_normal_vec_at(line, dist):

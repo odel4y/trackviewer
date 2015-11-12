@@ -42,8 +42,8 @@ def rectify_line(line, sample, des_entry_dist=None, des_exit_dist=None):
             des_exit_dist = LANE_WIDTH/2
 
     max_position_error = 0.1    # Maximum deviation from desired value at entry and exit [m]
-    entry_error = lambda: get_track_distance_projected_along_normal(entry_line, entry_line.length - INT_DIST, line) - des_entry_dist
-    exit_error = lambda: get_track_distance_projected_along_normal(exit_line, INT_DIST, line) - des_exit_dist
+    entry_error = lambda: get_lane_distance_projected_normal(entry_line, entry_line.length - INT_DIST, line) - des_entry_dist
+    exit_error = lambda: get_lane_distance_projected_normal(exit_line, INT_DIST, line) - des_exit_dist
 
     max_iterations = 100    # Rectification failed if it is not reached after max_iterations
     current_iteration = 0
