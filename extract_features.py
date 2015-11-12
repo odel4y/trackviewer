@@ -86,6 +86,9 @@ class NoIntersectionError(Exception):
 class ElementMissingInOSMError(Exception):
     pass
 
+class RectificationError(Exception):
+    pass
+
 def get_osm_data(int_sit):
     tries = 0
     while tries < 3:
@@ -129,6 +132,41 @@ def transform_to_lon_lat(x, y):
     out_proj = pyproj.Proj(init='epsg:4326')    # Längen-/Breitengrad
     lon,lat = pyproj.transform(in_proj, out_proj, x, y)
     return lon,lat
+
+def rectify_line(line, entry_line, exit_line, oneway_entry, oneway_exit, des_entry_dist=None, des_exit_dist=None):
+    """Rectify a track line in the intersection with predefined distances to the center lines"""
+    entry_normal_vec = get_normal_vec_at(entry_line, entry_line.length - INT_DIST)
+    exit_normal_vec = get_normal_vec_at(exit_line, INT_DIST)
+
+    # Calculate desired track distances
+    if des_entry_dist == None or des_exit_dist == None:
+        if oneway_entry:
+            des_entry_dist = 0.
+        else:
+            des_entry_dist = LANE_WIDTH/2
+        if oneway_exit:
+            des_exit_dist = 0.
+        else:
+            des_exit_dist = LANE_WIDTH/2
+
+    max_position_error = 0.1    # Maximum deviation from desired value at entry and exit [m]
+    entry_error = lambda: get_track_distance_projected_along_normal(entry_line, entry_line.length - INT_DIST, line) - des_entry_dist
+    exit_error = lambda: get_track_distance_projected_along_normal(exit_line, INT_DIST, line) - des_exit_dist
+
+    max_iterations = 100    # Rectification failed if it is not reached after max_iterations
+    current_iteration = 0
+
+    while abs(entry_error()) > max_position_error or abs(exit_error()) > max_position_error:
+        if current_iteration >= max_iterations:
+            raise RectificationError("Maximum iterations reached when optimizing line")
+        if abs(entry_error()) > max_position_error:
+            translation_vec = - entry_normal_vec * entry_error()
+            line = affinity.translate(line, xoff=translation_vec[0], yoff=translation_vec[1])
+        if abs(exit_error()) > max_position_error:
+            translation_vec = - exit_normal_vec * exit_error()
+            line = affinity.translate(line, xoff=translation_vec[0], yoff=translation_vec[1])
+        current_iteration += 1
+    return line
 
 def get_element_by_id(osm, el_id):
     """Returns the element with el_id from osm"""
@@ -954,19 +992,21 @@ def float_to_boolean(f):
     else:
         raise ValueError("Could not convert float %.1f to boolean")
 
-def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
+def get_feature_dict(int_sit, ways, way_lines, curve_secant, track, rectified=False):
     entry_way = ways["entry_way"]
     exit_way = ways["exit_way"]
     other_ways = ways["other_ways"]
     entry_line = way_lines["entry_way"]
     exit_line = way_lines["exit_way"]
-    exit_line = way_lines["exit_way"]
     other_lines = way_lines["other_ways"]
     intersection_angle = float(get_intersection_angle(entry_line, exit_line))
     half_angle_vec = get_half_angle_vec(exit_line, intersection_angle)
+    track_line = LineString([(x, y) for (x,y,_) in track])
+
+    if rectified:
+        track_line = rectify_line(track_line, entry_line, exit_line, get_oneway(entry_way), get_oneway(exit_way))
 
     features = copy.deepcopy(_features)
-    track_line = LineString([(x, y) for (x,y,_) in track])
     features["intersection_angle"] =                    intersection_angle
     features["maxspeed_entry"] =                        float(get_maxspeed(entry_way))
     features["maxspeed_exit"] =                         float(get_maxspeed(exit_way))
@@ -1033,11 +1073,10 @@ def select_label_method(samples, label_method="y_radii"):
         sample['label']['selected_method'] = label_method
     return samples
 
-def create_sample(int_sit, osm, pickled_filename="", output="none"):
+def create_sample(int_sit, osm, pickled_filename="", output="none", rectified=False):
     sample = copy.deepcopy(_sample)
     ways, way_lines, curve_secant, track = get_intersection_geometry(int_sit, osm)
-    features, label = get_feature_dict(int_sit, ways, way_lines, curve_secant, track)
-    track_line = LineString([(x, y) for (x,y,_) in track])
+    features, label = get_feature_dict(int_sit, ways, way_lines, curve_secant, track, rectified=rectified)
 
     if output=="console":
         # print features in readable format
@@ -1049,6 +1088,9 @@ def create_sample(int_sit, osm, pickled_filename="", output="none"):
     sample['geometry']['entry_line'] = way_lines["entry_way"]
     sample['geometry']['exit_line'] = way_lines["exit_way"]
     sample['geometry']['curve_secant'] = curve_secant
+    track_line = LineString([(x, y) for (x,y,_) in track])
+    if rectified:
+        track_line = rectify_line(track_line, way_lines["entry_way"], way_lines["exit_way"], get_oneway(ways["entry_way"]), get_oneway(ways["exit_way"]))
     sample['geometry']['track_line'] = track_line
     half_angle_vec = get_half_angle_vec(way_lines["exit_way"], features["intersection_angle"])
     half_angle_line = LineString([way_lines["exit_way"].coords[0], tuple(np.array(way_lines["exit_way"].coords[0]) + half_angle_vec)])
@@ -1064,6 +1106,7 @@ def create_sample(int_sit, osm, pickled_filename="", output="none"):
 
 if __name__ == "__main__":
     samples = []
+    rectified_samples = []
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
         fp, fne = os.path.split(fn)
@@ -1073,6 +1116,7 @@ if __name__ == "__main__":
                 int_sit = pickle.load(f)
             osm = get_osm(int_sit)
             samples.append(create_sample(int_sit, osm, fn, output="console"))
+            rectified_samples.append(create_sample(int_sit, osm, fn, rectified=True))
             # plot_helper.plot_intersection(sample)
         except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError, SampleTaggingError) as e:
             print '################'
@@ -1084,3 +1128,6 @@ if __name__ == "__main__":
     with open(os.path.join(fp, '..', 'training_data', 'samples.pickle'), 'wb') as f:
         print 'Writing database...'
         pickle.dump(samples, f)
+    with open(os.path.join(fp, '..', 'training_data', 'samples_rectified.pickle'), 'wb') as f:
+        print 'Writing rectified database...'
+        pickle.dump(rectified_samples, f)
