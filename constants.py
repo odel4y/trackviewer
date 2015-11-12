@@ -6,3 +6,4 @@ MAX_OSM_TRIES = 3 # the maximum number of tries to download OSM data
 
 LANE_WIDTH = 3.6 # Assumed lane width [m]
 SAMPLE_ANALYSIS = False
+TARGET_EPSG = 'epsg:25832'  # DE_ERTS89_UTM32

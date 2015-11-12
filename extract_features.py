@@ -14,7 +14,7 @@ from math import copysign
 import numpy as np
 import copy
 import pdb
-from constants import INT_DIST, SAMPLE_RESOLUTION, MAX_OSM_TRIES, LANE_WIDTH, SAMPLE_ANALYSIS
+from constants import INT_DIST, SAMPLE_RESOLUTION, MAX_OSM_TRIES, LANE_WIDTH, SAMPLE_ANALYSIS, TARGET_EPSG
 from datetime import datetime, timedelta
 
 _feature_types = [
@@ -122,7 +122,7 @@ def transform_track_to_cartesian(track):
 def transform_to_cartesian(lon, lat):
     """Transform longitude/latitude values to a cartesian system"""
     in_proj = pyproj.Proj(init='epsg:4326')    # Längen-/Breitengrad
-    out_proj = pyproj.Proj(init='epsg:3857')   # Kartesische Koordinaten
+    out_proj = pyproj.Proj(init=TARGET_EPSG)   # Kartesische Koordinaten
     x,y = pyproj.transform(in_proj, out_proj, lon, lat)
     return x,y
 
@@ -481,6 +481,8 @@ def find_nearest_coord_index(line, ref_p):
 def get_vehicle_speed(way_line, dist, track):
     """Returns the measured vehicle speed in km/h at dist of way_line
     with distance INT_DIST from intersection center"""
+    delta_i = 5
+
     track_line = LineString([(x,y) for (x,y,_) in track])
     dist_p = extended_interpolate(way_line, dist)
     normal = extend_line(get_normal_to_line(way_line, dist), 100.0, direction="both")
@@ -490,18 +492,20 @@ def get_vehicle_speed(way_line, dist, track):
         # Just take the start or end point instead
         track_p = track_line.interpolate(track_line.project(dist_p))
     track_i = find_nearest_coord_index(track_line, track_p)
-    if track_i < len(track_line.coords)-1-5:
-        track_i2 = track_i+5
+    if track_i < len(track_line.coords)-1-delta_i:
+        track_i2 = track_i + delta_i
     else:
         # If track_p is last point in track_line take a point before that instead
-        track_i2 = track_i-5
+        track_i2 = track_i - delta_i
     track_p2 = Point(track_line.coords[track_i2])
     time_delta = track[track_i2][2] - track[track_i][2]
     time_sec_delta = time_delta.total_seconds()
-    dist = track_line.project(Point(track_line.coords[track_i])) - track_line.project(track_p2)
-    # dist = track_p.distance(track_p2)
+    # dist = track_line.project(track_p, normalized=False) - track_line.project(track_p2, normalized=False)
+    min_i, max_i = min(track_i, track_i2), max(track_i, track_i2)
+    dist = np.sum(np.linalg.norm(np.diff(np.array([(x,y) for (x,y,_) in track[min_i:max_i+1]]), axis=0), axis=1))
     # Achtung!!! Korrekturfaktor der Geschwindigkeit wegen vemutlich Bug im Code
-    return abs(dist/time_sec_delta*3.6/1.5)
+    # return abs(dist/time_sec_delta*3.6/1.5)
+    return abs(dist/time_sec_delta*3.6)
 
 def upsample_line(line, times):
     """Simply interpolate more points in a LineString to have sample_rate times coordinates"""
