@@ -27,7 +27,8 @@ def show_velocity_profile(int_sit):
         this_dist = np.linalg.norm(next_p - this_p)
         time_diff = (track[i+1][2] - track[i][2]).total_seconds()
         curr_distance += this_dist
-        velocities.append( this_dist/time_diff*3.6/1.5)
+        velocities.append( this_dist/time_diff*3.6)
+        # velocities.append( this_dist/time_diff*3.6/1.5)
         distance.append(curr_distance)
 
     plt.plot(distance, velocities)
@@ -36,7 +37,7 @@ def show_velocity_profile(int_sit):
 files = ['2010_03_09_drive_0019_1.pickle','2010_03_09_drive_0019_2.pickle']
 path = '../data/prepared_data/KITTI_and_Karlsruhe/'
 
-kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10_08/samples.pickle')
+kitti_samples = automatic_test.load_samples('../data/training_data/samples_kitti/samples.pickle')
 selected_samples = [s for s in kitti_samples if s['pickled_filename'].split('/')[-1] in files]
 
 for s in selected_samples:

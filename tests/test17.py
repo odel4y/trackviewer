@@ -15,8 +15,8 @@ import numpy.random as random
 feature_list = _feature_types
 
 rf_algo = regressors.RandomForestAlgorithm(feature_list)
-kitti_samples = automatic_test.load_samples('../data/training_data/samples_15_10_08/samples.pickle')
-darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_15_10_20_darmstadt/samples.pickle')
+kitti_samples = automatic_test.load_samples('../data/training_data/samples_kitti/samples.pickle')
+darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_darmstadt/samples.pickle')
 extract_features.select_label_method(kitti_samples, 'y_radii')
 extract_features.select_label_method(darmstadt_samples, 'y_radii')
 random.shuffle(kitti_samples)
