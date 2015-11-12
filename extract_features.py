@@ -503,8 +503,6 @@ def get_vehicle_speed(way_line, dist, track):
     # dist = track_line.project(track_p, normalized=False) - track_line.project(track_p2, normalized=False)
     min_i, max_i = min(track_i, track_i2), max(track_i, track_i2)
     dist = np.sum(np.linalg.norm(np.diff(np.array([(x,y) for (x,y,_) in track[min_i:max_i+1]]), axis=0), axis=1))
-    # Achtung!!! Korrekturfaktor der Geschwindigkeit wegen vemutlich Bug im Code
-    # return abs(dist/time_sec_delta*3.6/1.5)
     return abs(dist/time_sec_delta*3.6)
 
 def upsample_line(line, times):
