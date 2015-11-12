@@ -1127,9 +1127,9 @@ if __name__ == "__main__":
             print 'Stepping to next file...'
             print '################'
             print '################'
-    with open(os.path.join(fp, '..', 'training_data', 'samples.pickle'), 'wb') as f:
+    with open(os.path.join('data/training_data', 'samples.pickle'), 'wb') as f:
         print 'Writing database...'
         pickle.dump(samples, f)
-    with open(os.path.join(fp, '..', 'training_data', 'samples_rectified.pickle'), 'wb') as f:
+    with open(os.path.join('data/training_data', 'samples_rectified.pickle'), 'wb') as f:
         print 'Writing rectified database...'
         pickle.dump(rectified_samples, f)
