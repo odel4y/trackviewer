@@ -21,12 +21,14 @@ _feature_types = [
     "intersection_angle",                       # Angle between entry and exit way
     "maxspeed_entry",                           # Allowed maximum speed on entry way
     "maxspeed_exit",                            # Allowed maximum speed on exit way
-    "lane_distance_entry_exact",                # Distance of track line to curve secant center point at 0 degree angle
-    "lane_distance_exit_exact",                 # Distance of track line to curve secant center point at 180 degree angle
-    "lane_distance_entry_lane_center",          # Distance of lane center line to curve secant ceter point at 0 degree angle
-    "lane_distance_exit_lane_center",           # Distance of lane center line to curve secant ceter point at 180 degree angle
-    "lane_distance_entry_projected_normal",     # Distance of track line to entry way at INT_DIST projected along normal
-    "lane_distance_exit_projected_normal",      # Distance of track line to exit way at INT_DIST projected along normal
+    "track_distance_along_curve_secant_entry",  # Distance of track line to curve secant center point at 0 degree angle
+    "track_distance_along_curve_secant_exit",   # Distance of track line to curve secant center point at 180 degree angle
+    "lane_distance_along_curve_secant_entry",   # Distance of lane center line to curve secant ceter point at 0 degree angle
+    "lane_distance_along_curve_secant_exit",    # Distance of lane center line to curve secant ceter point at 180 degree angle
+    "track_distance_projected_along_normal_entry",     # Distance of track line to entry way at INT_DIST projected along normal
+    "track_distance_projected_along_normal_exit",      # Distance of track line to exit way at INT_DIST projected along normal
+    "track_distance_projected_along_half_angle_vec_entry",
+    "track_distance_projected_along_half_angle_vec_exit",
     "oneway_entry",                             # Is entry way a oneway street?
     "oneway_exit",                              # Is exit way a oneway street?
     "curvature_entry",                          # Curvature of entry way over INT_DIST
@@ -549,7 +551,7 @@ def find_closest_intersection(line, line_p, track_line):
         return None
     else: raise Exception("No valid intersection type")
 
-def get_lane_distance_exact(curve_secant, track_line):
+def get_track_distance_along_curve_secant(curve_secant, track_line):
     """Get the distance of the track to the centre point of the curve secant at 0
     and 180 degrees angle"""
     origin_p = curve_secant.interpolate(0.5, normalized=True)
@@ -563,7 +565,7 @@ def get_lane_distance_exact(curve_secant, track_line):
     lane_distance_exit = origin_p.distance(track_exit_p)
     return lane_distance_entry, lane_distance_exit
 
-def get_lane_distance_lane_center(entry_line, exit_line, curve_secant):
+def get_lane_distance_along_curve_secant(entry_line, exit_line, curve_secant):
     """Get the distance of the lane center currently driven on to the centre point
     """
     # Find center of lanes and extend the lines to be sure to intersect with curve secant
@@ -580,35 +582,17 @@ def get_lane_distance_lane_center(entry_line, exit_line, curve_secant):
     lane_distance_exit = origin_p.distance(lane_exit_p)
     return lane_distance_entry, lane_distance_exit
 
-def get_lane_distance_projected_normal(way_line, dist, track_line, normalized=False):
+def get_track_distance_projected_along_half_angle_vec(way_line, dist, track_line, half_angle_vec):
+    way_p = extended_interpolate(way_line, dist)
+    return get_projected_distance(way_p, track_line, half_angle_vec)
+
+def get_track_distance_projected_along_normal(way_line, dist, track_line, normalized=False):
     """Get the distance of the track to the way projected along its normal at dist.
     The distance is positive for the right hand and negative for the left hand from the center line."""
     # Construct the normal and its negative counterpart to the line at dist
-    normal, neg_normal = get_normal_to_line(way_line, dist, normalized=normalized, direction="both")
-    normal_p = extended_interpolate(way_line, dist, normalized=normalized)
-    # Extend lines to be sure that they intersect with track line
-    normal = extend_line(normal, 100.0, direction="forward")
-    neg_normal = extend_line(neg_normal, 100.0, direction="forward")
-    pos_normal_p = find_closest_intersection(normal, normal_p, track_line)
-    if pos_normal_p != None:
-        dist_n = normal_p.distance(pos_normal_p)
-    else:
-        dist_n = None
-    neg_normal_p = find_closest_intersection(neg_normal, normal_p, track_line)
-    if neg_normal_p != None:
-        dist_nn = normal_p.distance(neg_normal_p)
-    else:
-        dist_nn = None
-    if dist_n != None and dist_nn != None:
-        if dist_n <= dist_nn:
-            return dist_n
-        else:
-            return -dist_nn
-    if dist_n == dist_nn == None:
-        raise NoIntersectionError("No intersection of normals with track found")
-    else:
-        if dist_n != None: return dist_n
-        else: return -dist_nn
+    normal_vec = get_normal_vec_at(way_line, dist)
+    way_p = extended_interpolate(way_line, dist)
+    return get_projected_distance(way_p, track_line, normal_vec, direction="both")
 
 # def get_track_dist_at_way_dist(way_line, dist, track_line):
 #     """Get the track's projected dist at the point the way_line normal at dist points at"""
@@ -766,87 +750,9 @@ def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, trac
     sampled_dist = []
     # Get the distance from way_line to track_line at every sampling position
     for ld in line_dists:
-        way_line_p = way_line.interpolate(ld)
-        # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
-        pos_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) + half_angle_vec)]
-        pos_ruler = extend_line(LineString(pos_ruler_coords), 100.0, direction="forward")
-        neg_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) - half_angle_vec)]
-        neg_ruler = extend_line(LineString(neg_ruler_coords), 100.0, direction="forward")
-        d_p = find_closest_intersection(pos_ruler, way_line_p, track_line)
-        nd_p = find_closest_intersection(neg_ruler, way_line_p, track_line)
-        if d_p != None:
-            pdist = way_line_p.distance(d_p)
-        else:
-            pdist = None
-        if nd_p != None:
-            ndist = - way_line_p.distance(nd_p)
-        else:
-            ndist = None
-        if pdist != None and ndist != None:
-            if pdist < np.abs(ndist):
-                sampled_dist.append(pdist)
-            else:
-                sampled_dist.append(ndist)
-        elif pdist != None:
-            sampled_dist.append(pdist)
-        elif ndist != None:
-            sampled_dist.append(ndist)
-        else:
-            raise SampleError("Track failed to be sampled along half_angle_vec")
+        way_p = way_line.interpolate(ld)
+        sampled_dist.append(get_projected_distance(way_p, track_line, half_angle_vec, direction="both", ret_line_dist=False))
     return sampled_dist
-
-# def get_projected_distance(p_coords, line_coords, proj_vec_coords, direction="both"):
-#         """Get the distance of a point to a line along proj_vec while only measuring forward/backward or both directions"""
-#
-#         def get_proj_dist_one_p_mult_vec(direction):
-#             """Get the projected distance for one point to a line with multiple proj_vecs"""
-#             if direction == "forward":
-#                 proj_vecs = proj_vec_coords
-#             elif direction == "backward":
-#                 proj_vecs = -proj_vec_coords
-#
-#             # Calculate the angles of all line_coords respective to the proj_vec
-#             angles = np.zeros(line_coords.shape[0],proj_vec_coords.shape[0])    # Actually cos angle
-#             cross_prod = np.zeros(line_coords.shape[0],proj_vec_coords.shape[0])
-#             vecs_to_line_coords = line_coords - p_coords
-#             vecs_to_line_coords_lengths = np.linalg.norm(vecs_to_line_coords, axis=1)
-#             proj_vecs_lengths = np.linalg.norm(proj_vecs, axis=1)
-#
-#             for j in xrange(angles.shape[0]):
-#                 for k in xrange(angles.shape[1]):
-#                     angles[j,k] = np.dot(proj_vecs[k], vecs_to_line_coords[j]) / \
-#                                 (proj_vecs_lengths[k] * vecs_to_line_coords_lengths[j])
-#                     cross_prod[j,k] = np.cross(proj_vecs[k], vecs_to_line_coords[j])
-#
-#             # Find the indices of the respective minimum angles
-#             min_ind = np.argmax(angles, axis=0)
-#             neighbor_ind = np.zeros(min_ind.shape)
-#             for j in xrange(min_ind.size):
-#                 this_sign = np.sign(cross_prod[min_ind[j], j])
-#                 try:
-#                     next_sign = np.sign(cross_prod[min_ind[j]+1, j])
-#                 except IndexError:
-#                     next_sign = None
-#                 try:
-#                     previous_sign = np.sign(cross_prod[min_ind[j]-1, j])
-#                 except IndexError:
-#                     previous_sign = None
-#
-#                 if next_sign != None and previous_sign != None:
-#                     if next_sign == previous_sign:
-#                         raise NoIntersectionError()
-#                     elif next_sign != this_sign:
-#                         neighbor_ind[j] = min_ind[j]+1
-#                     elif previous_sign != this_sign:
-#                         neighbor_ind[j] = min_ind[j]-1
-#                     else:
-#                         raise NoIntersectionError()
-#
-#                 raise NoIntersectionError("No intersection could be found while measuring projected distance")
-        #
-        #
-        # def get_proj_dist_mult_p_one_vec(direction):
-        #     """Get the projected distance for multiple points to a line with one proj_vec"""
 
 def get_projected_distance(p, line, proj_vec, direction="both", ret_line_dist=False):
     """Get the distance of a point to a line along proj_vec while only measuring forward/backward or both directions.
@@ -1014,7 +920,7 @@ def get_rectified_mse(y_pred, label_method, sample):
     distances = []
     for dist in step_lengths:
         try:
-            distances.append(get_lane_distance_projected_normal(pred_line, dist, sample['geometry']['track_line']))
+            distances.append(get_track_distance_projected_along_normal(pred_line, dist, sample['geometry']['track_line']))
         except NoIntersectionError as e:
             # print e
             # print 'Skipping this coordinate'
@@ -1056,23 +962,26 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     exit_line = way_lines["exit_way"]
     exit_line = way_lines["exit_way"]
     other_lines = way_lines["other_ways"]
+    intersection_angle = float(get_intersection_angle(entry_line, exit_line))
+    half_angle_vec = get_half_angle_vec(exit_line, intersection_angle)
 
     features = copy.deepcopy(_features)
     track_line = LineString([(x, y) for (x,y,_) in track])
-    intersection_angle = float(get_intersection_angle(entry_line, exit_line))
     features["intersection_angle"] =                    intersection_angle
     features["maxspeed_entry"] =                        float(get_maxspeed(entry_way))
     features["maxspeed_exit"] =                         float(get_maxspeed(exit_way))
     features["oneway_entry"] =                          boolean_to_float(get_oneway(entry_way))
     features["oneway_exit"] =                           boolean_to_float(get_oneway(exit_way))
-    lane_distance_entry_exact, lane_distance_exit_exact = get_lane_distance_exact(curve_secant, track_line)
-    features["lane_distance_entry_exact"] =             float(lane_distance_entry_exact)
-    features["lane_distance_exit_exact"] =              float(lane_distance_exit_exact)
-    lane_distance_entry_lane_center, lane_distance_exit_lane_center = get_lane_distance_lane_center(entry_line, exit_line, curve_secant)
-    features["lane_distance_entry_lane_center"] =       lane_distance_entry_lane_center
-    features["lane_distance_exit_lane_center"] =        lane_distance_exit_lane_center
-    features["lane_distance_entry_projected_normal"] =  float(get_lane_distance_projected_normal(entry_line, entry_line.length - INT_DIST, track_line))
-    features["lane_distance_exit_projected_normal"] =   float(get_lane_distance_projected_normal(exit_line, INT_DIST, track_line))
+    track_distance_along_curve_secant_entry, track_distance_along_curve_secant_exit = get_track_distance_along_curve_secant(curve_secant, track_line)
+    features["track_distance_along_curve_secant_entry"] =             float(track_distance_along_curve_secant_entry)
+    features["track_distance_along_curve_secant_exit"] =              float(track_distance_along_curve_secant_exit)
+    lane_distance_along_curve_secant_entry, lane_distance_along_curve_secant_exit = get_lane_distance_along_curve_secant(entry_line, exit_line, curve_secant)
+    features["lane_distance_along_curve_secant_entry"] =       lane_distance_along_curve_secant_entry
+    features["lane_distance_along_curve_secant_exit"] =        lane_distance_along_curve_secant_exit
+    features["track_distance_projected_along_normal_entry"] =  float(get_track_distance_projected_along_normal(entry_line, entry_line.length - INT_DIST, track_line))
+    features["track_distance_projected_along_normal_exit"] =   float(get_track_distance_projected_along_normal(exit_line, INT_DIST, track_line))
+    features["track_distance_projected_along_half_angle_vec_entry"] = float(get_track_distance_projected_along_half_angle_vec(entry_line, entry_line.length - INT_DIST, track_line, half_angle_vec))
+    features["track_distance_projected_along_half_angle_vec_exit"] = float(get_track_distance_projected_along_half_angle_vec(exit_line, INT_DIST, track_line, half_angle_vec))
     features["curvature_entry"] =                       float(get_total_line_curvature(get_reversed_line(entry_line)))
     features["curvature_exit"] =                        float(get_total_line_curvature(get_reversed_line(exit_line)))
     vehicle_speed_entry = get_vehicle_speed(entry_line, entry_line.length - INT_DIST, track)
@@ -1087,7 +996,6 @@ def get_feature_dict(int_sit, ways, way_lines, curve_secant, track):
     features["curve_secant_dist"] =                     float(get_curve_secant_dist(entry_line, curve_secant))
     label = copy.deepcopy(_label)
     radii = sample_line(curve_secant, track_line, features["intersection_angle"])
-    half_angle_vec = get_half_angle_vec(exit_line, intersection_angle)
     distances = sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, track_line)
     label["radii"] = radii
     label["distances"] = distances
