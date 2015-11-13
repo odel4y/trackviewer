@@ -113,7 +113,6 @@ def transform_geometry_to_origin(int_sit, osm):
     intersection_node = get_element_by_id(osm, int_sit['intersection_node'])
     lon_off, lat_off = intersection_node["lon"], intersection_node["lat"]
     x_off, y_off = transform_to_cartesian(lon_off, lat_off)
-    print x_off, y_off
 
     for el in osm:
         if el["type"] == "node":
@@ -790,7 +789,7 @@ def set_up_way_line_and_distances(entry_line, exit_line):
     l2, _ = split_line(exit_line, INT_DIST)
     way_line = join_lines(l1, l2)
     # Evenly place sampling distances along way_line
-    distance_steps = np.linspace(0, way_line.length, SAMPLE_RESOLUTION)
+    distance_steps = np.linspace(-INT_DIST, INT_DIST, SAMPLE_RESOLUTION)
     return way_line, distance_steps
 
 def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, track_line):
@@ -799,6 +798,7 @@ def sample_line_along_half_angle_vec(entry_line, exit_line, half_angle_vec, trac
     sampled_dist = []
     # Get the distance from way_line to track_line at every sampling position
     for ld in line_dists:
+        ld = ld + INT_DIST
         way_p = way_line.interpolate(ld)
         sampled_dist.append(get_projected_distance(way_p, track_line, half_angle_vec, direction="both", ret_line_dist=False))
     return sampled_dist
@@ -867,7 +867,7 @@ def get_distances_from_cartesian(X, Y, way_line, half_angle_vec):
 
         md, ld = get_projected_distance(Point((x, y)), way_line, -half_angle_vec, ret_line_dist=True)
 
-        LineDistances[i_arr] = ld
+        LineDistances[i_arr] = ld - INT_DIST
         MeasureDistances[i_arr] = md
     return LineDistances, MeasureDistances
 
@@ -879,7 +879,7 @@ def get_cartesian_from_distances(LineDistances, MeasureDistances, way_line, half
         i_arr = np.unravel_index(i, np.shape(X))
         if type(i_arr) == tuple and len(i_arr) == 1:
             i_arr = i_arr[0]
-        ld = LineDistances[i_arr]
+        ld = LineDistances[i_arr] + INT_DIST
         md = MeasureDistances[i_arr]
         way_line_p = way_line.interpolate(ld)
         # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
@@ -893,13 +893,6 @@ def get_predicted_line_along_half_angle_vec(entry_line, exit_line, half_angle_ve
     """Construct a predicted line along half_angle_vec with d_pred"""
     way_line, line_dists = set_up_way_line_and_distances(entry_line, exit_line)
     pred_line_points = []
-    # Construct a point at a distance at every sampling position
-    # for ld, pd in zip(line_dists, d_pred):
-    #     way_line_p = way_line.interpolate(ld)
-    #     # Construct a ruler along half_angle_vec that can be used to measure the distance from way_line to the track
-    #     pos_ruler_coords = [way_line_p.coords[0], tuple(np.array(way_line_p.coords[0]) + half_angle_vec)]
-    #     pos_ruler = LineString(pos_ruler_coords)
-    #     pred_line_points.append(extended_interpolate(pos_ruler, pd))
     X, Y = get_cartesian_from_distances(line_dists, d_pred, way_line, half_angle_vec)
     coords = zip(list(X), list(Y))
     return LineString(coords)
