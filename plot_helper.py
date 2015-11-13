@@ -17,6 +17,8 @@ from constants import SAMPLE_RESOLUTION, INT_DIST
 import scipy.interpolate
 import scipy.stats
 
+sns.set_style("whitegrid")
+
 def get_distributed_colors(number, colormap='Set1'):
     cmap = plt.get_cmap('Set1')
     rgbcolors = [cmap(i) for i in np.linspace(0., 1., number)]
