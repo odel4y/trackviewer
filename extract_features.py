@@ -16,6 +16,7 @@ import copy
 import pdb
 from constants import INT_DIST, SAMPLE_RESOLUTION, MAX_OSM_TRIES, LANE_WIDTH, SAMPLE_ANALYSIS, TARGET_EPSG
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 
 _feature_types = [
     "intersection_angle",                       # Angle between entry and exit way
@@ -55,7 +56,8 @@ _sample = {
         'exit_line': None,
         'curve_secant': None,
         'track_line': None,
-        'half_angle_line': None
+        'half_angle_line': None,
+        'lon_lat_offset': None
     },
     'X': None,                          # Feature vector
     'y': None,                          # Label vector with selected method
@@ -106,18 +108,25 @@ def get_osm_data(int_sit):
             print e
             print 'Retrying OSM Download...'
 
-def transform_osm_to_cartesian(osm):
+def transform_geometry_to_origin(int_sit, osm):
+    """Transforms all geometry to cartesian coordinates with origin in intersection center"""
+    intersection_node = get_element_by_id(osm, int_sit['intersection_node'])
+    lon_off, lat_off = intersection_node["lon"], intersection_node["lat"]
+    x_off, y_off = transform_to_cartesian(lon_off, lat_off)
+    print x_off, y_off
+
     for el in osm:
         if el["type"] == "node":
-            el["x"], el["y"] = transform_to_cartesian(el["lon"], el["lat"])
-    return osm
+            x, y = transform_to_cartesian(el["lon"], el["lat"])
+            el["x"], el["y"] = x - x_off, y - y_off
 
-def transform_track_to_cartesian(track):
-    new_track = []
-    for lon, lat, time in track:
+    transformed_track = []
+    for lon, lat, time in int_sit['track']:
         x, y = transform_to_cartesian(lon, lat)
-        new_track.append((x, y, time))
-    return new_track
+        transformed_track.append((x - x_off, y - y_off, time))
+    int_sit['track'] = transformed_track
+
+    return int_sit, osm, (lon_off, lat_off)
 
 def transform_to_cartesian(lon, lat):
     """Transform longitude/latitude values to a cartesian system"""
@@ -128,7 +137,7 @@ def transform_to_cartesian(lon, lat):
 
 def transform_to_lon_lat(x, y):
     """Transform to longitude/latitude values from a cartesian system"""
-    in_proj = pyproj.Proj(init='epsg:3857')   # Kartesische Koordinaten
+    in_proj = pyproj.Proj(init=TARGET_EPSG)   # Kartesische Koordinaten
     out_proj = pyproj.Proj(init='epsg:4326')    # Längen-/Breitengrad
     lon,lat = pyproj.transform(in_proj, out_proj, x, y)
     return lon,lat
@@ -970,13 +979,6 @@ def get_rectified_mse(y_pred, label_method, sample):
             # pred_line.interpolate()
     return np.mean(np.power(np.array(distances), 2))
 
-def get_osm(int_sit):
-    print 'Downloading OSM...'
-    osm = get_osm_data(int_sit)
-    print 'Done.'
-    int_sit["track"] = transform_track_to_cartesian(int_sit["track"])
-    return transform_osm_to_cartesian(osm)
-
 def get_intersection_geometry(int_sit, osm):
     ways = get_intersection_ways(int_sit, osm)
     way_lines = get_intersection_way_lines(ways, int_sit, osm)
@@ -1075,7 +1077,7 @@ def select_label_method(samples, label_method="y_radii"):
         sample['label']['selected_method'] = label_method
     return samples
 
-def create_sample(int_sit, osm, pickled_filename="", output="none", rectified=False):
+def create_sample(int_sit, osm, lon_lat_offset, pickled_filename="", output="none", rectified=False):
     sample = copy.deepcopy(_sample)
     ways, way_lines, curve_secant, track = get_intersection_geometry(int_sit, osm)
     features, label = get_feature_dict(int_sit, ways, way_lines, curve_secant, track, rectified=rectified)
@@ -1094,6 +1096,7 @@ def create_sample(int_sit, osm, pickled_filename="", output="none", rectified=Fa
     if rectified:
         track_line = rectify_line(track_line, way_lines["entry_way"], way_lines["exit_way"], get_oneway(ways["entry_way"]), get_oneway(ways["exit_way"]))
     sample['geometry']['track_line'] = track_line
+    sample['geometry']['lon_lat_offset'] = lon_lat_offset
     half_angle_vec = get_half_angle_vec(way_lines["exit_way"], features["intersection_angle"])
     half_angle_line = LineString([way_lines["exit_way"].coords[0], tuple(np.array(way_lines["exit_way"].coords[0]) + half_angle_vec)])
     sample['geometry']['half_angle_line'] = half_angle_line
@@ -1106,27 +1109,46 @@ def create_sample(int_sit, osm, pickled_filename="", output="none", rectified=Fa
 
     return sample
 
+# def plot_line(line):
+#     coords = list(line.coords)
+#     x,y = zip(*coords)
+#     handle = plt.plot(x, y, 'k-')
+#     return handle
+#
+# def debug_plot(int_sit, osm):
+#     ways, way_lines, curve_secant, track = get_intersection_geometry(int_sit, osm)
+#     plt.hold(True)
+#     plot_line(way_lines["entry_way"])
+#     plot_line(way_lines["exit_way"])
+#     track_line = LineString([(x, y) for (x,y,_) in track])
+#     x, y = zip(*[(x, y) for (x, y, _) in track])
+#     plt.plot(x, y, 'k-')
+#     plt.show()
+#
+
 if __name__ == "__main__":
     samples = []
     rectified_samples = []
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
         fp, fne = os.path.split(fn)
-        try:
-            print 'Processing %s' % (fne)
-            with open(fn, 'r') as f:
-                int_sit = pickle.load(f)
-            osm = get_osm(int_sit)
-            samples.append(create_sample(int_sit, osm, fn, output="console"))
-            rectified_samples.append(create_sample(int_sit, osm, fn, rectified=True))
-            # plot_helper.plot_intersection(sample)
-        except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError, SampleTaggingError) as e:
-            print '################'
-            print '################'
-            print e
-            print 'Stepping to next file...'
-            print '################'
-            print '################'
+        # try:
+        print 'Processing %s' % (fne)
+        with open(fn, 'r') as f:
+            int_sit = pickle.load(f)
+        print 'Downloading OSM...'
+        osm = get_osm_data(int_sit)
+        print 'Done.'
+        int_sit, osm, lon_lat_offset = transform_geometry_to_origin(int_sit, osm)
+        samples.append(create_sample(int_sit, osm, lon_lat_offset, fn, output="console"))
+        rectified_samples.append(create_sample(int_sit, osm, lon_lat_offset, fn, rectified=True))
+        # except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError, SampleTaggingError) as e:
+        #     print '################'
+        #     print '################'
+        #     print e
+        #     print 'Stepping to next file...'
+        #     print '################'
+        #     print '################'
     with open(os.path.join('data/training_data', 'samples.pickle'), 'wb') as f:
         print 'Writing database...'
         pickle.dump(samples, f)
