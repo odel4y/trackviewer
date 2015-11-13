@@ -5,6 +5,7 @@ import automatic_test
 import numpy as np
 import extract_features
 from extract_features import *
+from extract_features import _feature_types
 # import matplotlib.pyplot as plt
 import seaborn as sns
 from shapely.geometry import LineString, Point, MultiPoint, GeometryCollection
@@ -18,7 +19,7 @@ import pickle
 sns.set_context("paper", font_scale=1.8)
 sns.plt.rc("figure", figsize=[12,6])
 
-def get_average_speed_of_sample(sample):
+def get_average_speed_and_dist_of_sample(sample):
     fn = sample['pickled_filename']
     with open(fn, 'r') as f:
         int_sit = pickle.load(f)
@@ -41,7 +42,7 @@ def get_average_speed_of_sample(sample):
     min_i, max_i = min(track_i1, track_i2), max(track_i1, track_i2)
     dist = np.sum(np.linalg.norm(np.diff(np.array([(x, y) for (x, y, _) in track[min_i: max_i+1]]), axis=0), axis=1))
 
-    return abs(dist/time_delta*3.6)
+    return abs(dist/time_delta*3.6), dist
 
 def get_array_from_feature(samples, feature):
     feature_i = extract_features._feature_types.index(feature)
@@ -144,7 +145,8 @@ def plot_sample_intersection_curvature(samples, title="Sample curvature over int
     # fig = plt.figure()
     # sns.plt.hold(True)
     for i in range(curvatures.shape[0]):
-        ax.plot(line_dists[i], curvatures[i], color=color, linestyle='-')
+        handle, = ax.plot(line_dists[i], np.degrees(curvatures[i]), color=color, linestyle='-')
+    return handle # Only need one
     # plt.title(title)
     # sns.plt.show()
 
@@ -156,35 +158,39 @@ if __name__ == "__main__":
     dataset_samples = [("KITTI + Karlsruhe", automatic_test.load_samples("data/training_data/samples_analysis/samples_kitti.pickle")),
                         ("Darmstadt", automatic_test.load_samples("data/training_data/samples_analysis/samples_darmstadt.pickle"))]
 
-
+    sns.set_style("whitegrid", {"legend.frameon":True})
     # Intersection angles
     figure1, axes1 = sns.plt.subplots(1, 2, sharey=True)
     for i, (name, samples) in enumerate(dataset_samples):
         ax = axes1[i]
         # sns.set_style("whitegrid")
-        intersection_angles = get_array_from_feature(samples, 'intersection_angle')/(np.pi)*180.0
+        intersection_angles = list(get_array_from_feature(samples, 'intersection_angle')/(np.pi)*180.0)
+        left_turn_count = len([ia for ia in intersection_angles if ia >= 0.])
+        right_turn_count = len([ia for ia in intersection_angles if ia < 0.])
+        print "%s: links: %d/%d rechts: %d/%d" % (name, left_turn_count, len(intersection_angles), right_turn_count, len(intersection_angles))
         sns.distplot(intersection_angles, bins=20, kde=False, rug=True, ax=ax)
         # sns.plt.bar(intersection_angles, bins=20)
-        ax.set_xlabel("Kreuzungswinkel")
-        ax.set_ylabel("Anzahl der Kreuzungen")
+        # ax.set_xlabel(u"Kreuzungswinkel [°]")
+        # if i == 0:
+        #     ax.set_ylabel("Anzahl der Kreuzungen [-]")
     # sns.plt.show(figure1)
 
     # Oneways
-    figure2, axes2 = sns.plt.subplots(1, 2, sharey=True)
+    # figure2, axes2 = sns.plt.subplots(1, 2, sharey=True)
     for i, (name, samples) in enumerate(dataset_samples):
-        ax = axes2[i]
+        # ax = axes2[i]
         oneways_entry = [extract_features.float_to_boolean(f) for f in get_array_from_feature(samples, 'oneway_entry')]
         oneways_exit = [extract_features.float_to_boolean(f) for f in get_array_from_feature(samples, 'oneway_exit')]
         oneways = [en and ex for en, ex in zip(oneways_entry, oneways_exit)]
 
-        print "Kreuzungen mit Einbahnstraßen: %d/%d" % (oneways.count(True), len(samples))
-        oneway = {True:u"Einbahnstraße", False:u"Gegenverkehrsstraße"}
+        print "%s: Kreuzungen mit Einbahnstraßen: %d/%d" % (name, oneways.count(True), len(samples))
+        # oneway = {True:u"Einbahnstraße", False:u"Gegenverkehrsstraße"}
         # sns.set_style("whitegrid")
-        sns.countplot([oneway[o] for o in oneways], order=[u"Einbahnstraße", u"Gegenverkehrsstraße"], ax=ax)
-        if i == 0:
-            ax.set_ylabel("Kreuzungen mit entsprechenden Armen")
-        else:
-            ax.set_ylabel("")
+        # sns.countplot([oneway[o] for o in oneways], order=[u"Einbahnstraße", u"Gegenverkehrsstraße"], ax=ax)
+        # if i == 0:
+        #     ax.set_ylabel("Kreuzungen mit entsprechenden Armen")
+        # else:
+        #     ax.set_ylabel("")
     # sns.plt.show(figure2)
 
     def label_int(ms):
@@ -202,11 +208,10 @@ if __name__ == "__main__":
         maxspeeds = list(get_array_from_feature(samples, 'maxspeed_entry')) + list(get_array_from_feature(samples, 'maxspeed_exit'))
         maxspeeds_labels = [label_int(ms) for ms in maxspeeds]
         maxspeed_plot = sns.countplot(maxspeeds_labels, order=["n/a","30","50"], ax=ax)
-        ax.set_xlabel(u"Erlaubte Höchstgeschwindigkeit [km/h]")
-        if i == 0:
-            ax.set_ylabel("Anzahl der Kreuzungsarme")
-        else:
-            ax.set_ylabel("")
+        # ax.set_xlabel(u"Erlaubte Höchstgeschwindigkeit [km/h]")
+        # if i == 0:
+        #     ax.set_ylabel("Anzahl der Kreuzungsarme [-]")
+        ax.set_ylabel("")
     # sns.plt.show(figure3)
 
     # Lanes
@@ -216,41 +221,40 @@ if __name__ == "__main__":
         lanes = list(get_array_from_feature(samples, 'lane_count_entry')) + list(get_array_from_feature(samples, 'lane_count_exit'))
         lanes_labels = [label_int(ms) for ms in lanes]
         lanes_plot = sns.countplot(lanes_labels, order=["n/a", "1", "2", "4"], ax=ax)
-        ax.set_xlabel(u"Fahrstreifenanzahl")
-        if i == 0:
-            ax.set_ylabel("Anzahl der Kreuzungsarme")
-        else:
-            ax.set_ylabel("")
+        # ax.set_xlabel(u"Fahrstreifenanzahl")
+        # if i == 0:
+        #     ax.set_ylabel("Anzahl der Kreuzungsarme [-]")
         # sns.plt.title("KITTI + Karlsruhe")
+        ax.set_ylabel("")
     sns.plt.show(figure4)
     # Track curvatures
-    # figure5, axes5 = sns.plt.subplots(1, 2)
-    # for i, (name, samples) in enumerate(dataset_samples):
-    #     l_samples = [s for s in samples if s['X'][_feature_types.index('intersection_angle')] >= 0.]
-    #     r_samples = [s for s in samples if s['X'][_feature_types.index('intersection_angle')] < 0.]
-    #     ax = axes5[i]
-    #     ax.hold(True)
-    #     plot_sample_intersection_curvature(l_samples, ax=ax, color=(0,0,1,0.5))
-    #     plot_sample_intersection_curvature(r_samples, ax=ax, color=(1,0,0,0.5))
-    #     ax.set_xlim([-35,35])
-    #     ax.set_ylim([-0.2,0.2])
-    # sns.plt.show(figure5)
-
-    figure6, axes6 = sns.plt.subplots(1, 2, sharey=True)
+    figure5, axes5 = sns.plt.subplots(1, 2)
     for i, (name, samples) in enumerate(dataset_samples):
-        ax = axes6[i]
-        for s in samples:
-            print get_average_speed_of_sample(s)
+        l_samples = [s for s in samples if s['X'][_feature_types.index('intersection_angle')] >= 0.]
+        r_samples = [s for s in samples if s['X'][_feature_types.index('intersection_angle')] < 0.]
+        ax = axes5[i]
+        ax.hold(True)
+        l_handle = plot_sample_intersection_curvature(l_samples, ax=ax, color=(0,0,1,0.5))
+        r_handle = plot_sample_intersection_curvature(r_samples, ax=ax, color=(1,0,0,0.5))
+        ax.legend([l_handle, r_handle], ['Linksabb.', 'Rechtsabb.'])
+        ax.set_xlim([-30,30])
+        ax.set_ylim([-15,15])
+        ax.set_ylabel("")
+    sns.plt.show(figure5)
+
+    figure6, axes6 = sns.plt.subplots(2, 2, sharey=True, sharex=True)
+    for i, (name, samples) in enumerate(dataset_samples):
+        speed, dist = zip(*[get_average_speed_and_dist_of_sample(s) for s in samples])
+        print "%s: Durchschnittsgeschwindigkeit %d km/h" % (name, np.mean(speed))
+        print "%s: Weglänge %.2f m" % (name, np.sum(dist))
         maxspeed_entry = get_array_from_feature(samples, 'maxspeed_entry')
         maxspeed_exit = get_array_from_feature(samples, 'maxspeed_exit')
         vehicle_speed_entry = get_array_from_feature(samples, 'vehicle_speed_entry')
         vehicle_speed_exit = get_array_from_feature(samples, 'vehicle_speed_exit')
-        diff_speed_entry = [vs - ms for vs, ms in zip(maxspeed_entry, vehicle_speed_entry) if ms != 0.0]
-        diff_speed_exit = [vs - ms for vs, ms in zip(maxspeed_exit, vehicle_speed_exit) if ms != 0.0]
-        # mean_err_entry = np.mean(np.abs(vehicle_speed_entry-maxspeed_entry))
-        # std_err_entry = np.std(np.abs(vehicle_speed_entry-maxspeed_entry))
-        # mean_err_exit = np.mean(np.abs(vehicle_speed_exit-maxspeed_exit))
-        # std_err_exit = np.std(np.abs(vehicle_speed_exit-maxspeed_exit))
+        diff_speed_entry = [vs - ms for ms, vs in zip(maxspeed_entry, vehicle_speed_entry) if ms != 0.0]
+        diff_speed_exit = [vs - ms for ms, vs in zip(maxspeed_exit, vehicle_speed_exit) if ms != 0.0]
+        ax = axes6[0,i]
         sns.distplot(diff_speed_entry, bins=20, kde=False, rug=True, ax=ax)
-        ax.set_xlabel("Geschwindigkeitsfehler")
+        ax = axes6[1,i]
+        sns.distplot(diff_speed_exit, color="red", bins=20, kde=False, rug=True, ax=ax)
     sns.plt.show(figure6)
