@@ -1132,23 +1132,23 @@ if __name__ == "__main__":
     for fn in sys.argv[1:]:
         fn = os.path.abspath(fn)
         fp, fne = os.path.split(fn)
-        # try:
-        print 'Processing %s' % (fne)
-        with open(fn, 'r') as f:
-            int_sit = pickle.load(f)
-        print 'Downloading OSM...'
-        osm = get_osm_data(int_sit)
-        print 'Done.'
-        int_sit, osm, lon_lat_offset = transform_geometry_to_origin(int_sit, osm)
-        samples.append(create_sample(int_sit, osm, lon_lat_offset, fn, output="console"))
-        rectified_samples.append(create_sample(int_sit, osm, lon_lat_offset, fn, rectified=True))
-        # except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError, SampleTaggingError) as e:
-        #     print '################'
-        #     print '################'
-        #     print e
-        #     print 'Stepping to next file...'
-        #     print '################'
-        #     print '################'
+        try:
+            print 'Processing %s' % (fne)
+            with open(fn, 'r') as f:
+                int_sit = pickle.load(f)
+            print 'Downloading OSM...'
+            osm = get_osm_data(int_sit)
+            print 'Done.'
+            int_sit, osm, lon_lat_offset = transform_geometry_to_origin(int_sit, osm)
+            samples.append(create_sample(int_sit, osm, lon_lat_offset, fn, output="console"))
+            rectified_samples.append(create_sample(int_sit, osm, lon_lat_offset, fn, rectified=True))
+        except (ValueError, SampleError, MaxspeedMissingError, NoIntersectionError, SampleTaggingError) as e:
+            print '################'
+            print '################'
+            print e
+            print 'Stepping to next file...'
+            print '################'
+            print '################'
     with open(os.path.join('data/training_data', 'samples.pickle'), 'wb') as f:
         print 'Writing database...'
         pickle.dump(samples, f)
