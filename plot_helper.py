@@ -215,7 +215,7 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
     plot_lines('k', entry_line, exit_line)
     if reference_lines:
         plot_line('k', curve_secant, half_angle_line)
-    handles.append( plot_line('r', track_line, 'Measured Track', linestyle='--') )
+    handles.append( plot_line('r', track_line, 'Measured Track', linestyle='-') )
     plot_arrows_along_line('r', track_line)
 
     if predicted:
