@@ -174,7 +174,8 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
             # With the intersection angle it can be determined how the
             # intersection is upright (curve_secant is below entry and exit_line)
             phi = np.pi + phi
-        rot_c, = curve_secant.interpolate(0.5, normalized=True).coords[:]
+        # rot_c, = curve_secant.interpolate(0.5, normalized=True).coords[:]
+        rot_c = (0,0)
         rotation = (phi, rot_c)
     phi, rot_c = rotation
     if rotation[0] != 0.:
