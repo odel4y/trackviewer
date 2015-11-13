@@ -14,6 +14,7 @@ import numpy as np
 from plot_helper import plot_intersection, plot_graph
 import copy
 import matplotlib.pyplot as plt
+from constants import SAMPLE_RESOLUTION
 # import pdb; pdb.set_trace()
 
 class PredictionAlgorithm(object):
@@ -108,7 +109,8 @@ def predict(algorithms, test_samples):
         # Initialize result structure
         results[algo] = {
                             'mse': [],
-                            'predictions': []
+                            'predictions': [],
+                            'peak_errors': []
                         }
         for s in test_samples:
             y_true = s['y']
@@ -117,6 +119,8 @@ def predict(algorithms, test_samples):
             # mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
             results[algo]['predictions'].append(y_pred)
             results[algo]['mse'].append(mse)
+            peak_i = int(SAMPLE_RESOLUTION/2)
+            results[algo]['peak_errors'].append(abs(y_true[peak_i]-y_pred[peak_i]))
     return results
 
 def predict_proba(algorithms, test_samples):
@@ -245,10 +249,12 @@ def get_result_statistics(results):
     for algo, result in results.iteritems():
         result_statistics[algo] =   {
                                         'cumulated_mse': sum(result['mse']),
-                                        'average_mse': np.mean(result['mse']),
+                                        'mean_mse': np.mean(result['mse']),
                                         'std_mse': np.std(result['mse']),
                                         'min_mse': min(result['mse']),
-                                        'max_mse': max(result['mse'])
+                                        'max_mse': max(result['mse']),
+                                        'mean_peak_squared_error': np.mean(np.power(result['peak_errors'], 2)),
+                                        'std_peak_squared_error': np.std(np.power(result['peak_errors'], 2))
                                     }
     return result_statistics
 
@@ -265,10 +271,11 @@ def output_formatted_result(results, output="console"):
             print 'Test with algorithm:', algo.get_name()
             if algo.get_description() != '':
                 print 'Description:', algo.get_description()
-            print 'Average MSE:\t%.2f +/- %.2f' % (rs['average_mse'], rs['std_mse'])
+            print 'Mean MSE:\t%.2f +/- %.2f' % (rs['mean_mse'], rs['std_mse'])
             print 'Cumulated MSE:\t%.2f' % rs['cumulated_mse']
             print 'Minimum MSE:\t%.2f' % rs['min_mse']
             print 'Maximum MSE:\t%.2f' % rs['max_mse']
+            print 'Mean Peak Squared Error:\t%.2f +/- %.2f' % (rs['mean_peak_squared_error'], rs['std_peak_squared_error'])
 
 def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False, print_results=True):
     """General prediction quality test for algorithms with the option of cross validation"""
@@ -298,7 +305,7 @@ def test_feature_permutations(algo_class, train_sample_sets, test_sample_sets, f
     a minimum number of features with a certain Algorithm class. Cross validation is possible"""
     feature_sets = []               # Contains all the possible combinations of features with a minimum number of them
     results = []
-    rating_arg = 'average_mse'      # The argument to be used as a comparison score
+    rating_arg = 'mean_mse'      # The argument to be used as a comparison score
     feature_quality_dicts = []
     if not cross_validation:
         train_sample_sets = [train_sample_sets]
@@ -362,6 +369,6 @@ def test_parameter_variations(algo_class, args, varying_parameter, values, train
             algo = algo_class(**new_args)
             results = test([algo], train_set, test_set, print_results=False)
             rs = get_result_statistics(results)
-            params_mse[run_i][i] = rs[algo]['average_mse']
+            params_mse[run_i][i] = rs[algo]['mean_mse']
     params_mse = np.mean(params_mse, axis=0)
     return params_mse
