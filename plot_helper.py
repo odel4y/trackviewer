@@ -211,7 +211,6 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
 
         ax = plt.gca()
         p = ax.pcolormesh(X, Y, D, cmap="Oranges")
-        plt.gcf().colorbar(p)
 
     plot_lines('k', entry_line, exit_line)
     if reference_lines:
@@ -233,6 +232,10 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
 
     for line in additional_lines:
         plot_line('b', line)
+
+    if orientation == "curve-secant":
+        plt.gca().set_ylim([-20,10])
+        plt.gca().set_xlim([-20,20])
 
     plt.legend(handles=handles)
     if title: plt.title(title)
