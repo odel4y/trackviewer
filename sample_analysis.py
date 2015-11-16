@@ -258,3 +258,19 @@ if __name__ == "__main__":
         ax = axes6[1,i]
         sns.distplot(diff_speed_exit, color="red", bins=20, kde=False, rug=True, ax=ax)
     sns.plt.show(figure6)
+
+    figure7, axes7 = sns.plt.subplots(2, 2)
+    for i, (name, samples) in enumerate(dataset_samples):
+
+        sns.plt.hold(True)
+        _, s_di = set_up_way_line_and_distances(samples[0]['geometry']['entry_line'], samples[0]['geometry']['exit_line'])
+        for s in samples:
+            if s['X'][_feature_types.index('intersection_angle')] >= 0.:
+                linestyle = 'r-'
+            else:
+                linestyle = 'b-'
+            ax = axes7[0,i]
+            ax.plot(s_di, s['label']['y_distances'], linestyle)
+            ax = axes7[1,i]
+            ax.plot(s_di, s['label']['y_radii'], linestyle)
+    sns.plt.show(figure7)
