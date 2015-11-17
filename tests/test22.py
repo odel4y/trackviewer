@@ -17,10 +17,8 @@ feature_list = [
     "intersection_angle",                       # Angle between entry and exit way
     "maxspeed_entry",                           # Allowed maximum speed on entry way
     "maxspeed_exit",                            # Allowed maximum speed on exit way
-    "track_distance_projected_along_normal_entry",     # Distance of track line to entry way at INT_DIST projected along normal
-    "track_distance_projected_along_normal_exit",      # Distance of track line to exit way at INT_DIST projected along normal
-    "track_distance_projected_along_half_angle_vec_entry",
-    "track_distance_projected_along_half_angle_vec_exit",
+    "lane_distance_along_curve_secant_entry",   # Distance of lane center line to curve secant ceter point at 0 degree angle
+    "lane_distance_along_curve_secant_exit",    # Distance of lane center line to curve secant ceter point at 180 degree angle
     "oneway_entry",                             # Is entry way a oneway street?
     "oneway_exit",                              # Is exit way a oneway street?
     "curvature_entry",                          # Curvature of entry way over INT_DIST
@@ -33,8 +31,8 @@ feature_list = [
     "curve_secant_dist"                         # Shortest distance from curve secant to intersection center
 ]
 
-kitti_samples = automatic_test.load_samples('../data/training_data/samples_kitti/samples.pickle')
-darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_darmstadt/samples.pickle')
+kitti_samples = automatic_test.load_samples('../data/training_data/samples_kitti/samples_rectified.pickle')
+darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_darmstadt/samples_rectified.pickle')
 random.shuffle(kitti_samples)
 random.shuffle(darmstadt_samples)
 extract_features.select_label_method(kitti_samples, 'y_distances')
@@ -43,7 +41,7 @@ kitti_train_samples, test_samples = automatic_test.get_partitioned_samples(kitti
 train_samples = kitti_train_samples + darmstadt_samples
 
 rf_algo = regressors.RandomForestAlgorithm(feature_list, single_target_variable=False)
-al_algo = reference_implementations.AlhajyaseenAlgorithm(allow_rectification=True)
+al_algo = reference_implementations.AlhajyaseenAlgorithm(allow_rectification=False)
 is_algo = reference_implementations.InterpolatingSplineAlgorithm()
 algos = [rf_algo, al_algo, is_algo]
 results = automatic_test.test(algos, train_samples, test_samples)

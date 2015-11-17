@@ -1,17 +1,17 @@
 #!/usr/bin/python
 #coding:utf-8
-# Testing out different parameters of RandomForestRegressor and their performance
+# Hyperparameter optimization with Random Search
 import sys
 sys.path.append('../')
 import automatic_test
 import regressors
-import reference_implementations
 from extract_features import _feature_types
-import extract_features
+from extract_features import *
 import numpy as np
-import plot_helper
-import matplotlib.pyplot as plt
 import numpy.random as random
+import matplotlib.pyplot as plt
+
+random.seed(123456789)
 
 feature_list = [
     "intersection_angle",                       # Angle between entry and exit way
@@ -29,29 +29,36 @@ feature_list = [
     "curve_secant_dist"                         # Shortest distance from curve secant to intersection center
 ]
 
-random.seed(42)
-
 kitti_samples = automatic_test.load_samples('../data/training_data/samples_kitti/samples.pickle')
 darmstadt_samples = automatic_test.load_samples('../data/training_data/samples_darmstadt/samples.pickle')
-extract_features.select_label_method(kitti_samples, 'y_distances')
-extract_features.select_label_method(darmstadt_samples, 'y_distances')
-random.shuffle(kitti_samples)
-random.shuffle(darmstadt_samples)
-kitti_train_samples, kitti_test_samples = automatic_test.get_partitioned_samples(kitti_samples, 0.7)
-darmstadt_train_samples, darmstadt_test_samples = automatic_test.get_partitioned_samples(darmstadt_samples, 0.7)
-train_samples = kitti_train_samples + darmstadt_train_samples
-test_samples = kitti_test_samples + darmstadt_test_samples
+samples = kitti_samples + darmstadt_samples
+random.shuffle(samples)
+sub_samples, test_samples = automatic_test.get_partitioned_samples(samples, 0.8)
+train_sample_sets, validation_sample_sets = automatic_test.get_cross_validation_samples(sub_samples, 5)
 
-parameter = "n_estimators"
-values = np.arange(10,211,20)
-runs = 10
-params_mse = automatic_test.test_parameter_variations(regressors.RandomForestAlgorithm, {"features":feature_list, "random_state":random}, parameter, values, train_samples, test_samples, runs)
-plt.plot(values, params_mse, 'b.-')
-plt.xlabel(parameter)
-plt.show()
+random_state = random.get_state()
 
-# rf_algo = regressors.RandomForestAlgorithm(feature_list, single_target_variable=False, n_estimators=80)
-# algos = [rf_algo]
-# results = automatic_test.test(algos, train_samples, test_samples)
-# # automatic_test.show_intersection_plot(results, test_samples, which_samples="best-worst-case", orientation="curve-secant")
-# automatic_test.show_intersection_plot(results, test_samples, which_samples="worst-case", orientation="curve-secant")
+algo_args = {
+    'features': feature_list
+}
+hyp_intervals = [
+    ('n_estimators', 10, 200),
+    ('max_depth', 2, 50),
+    ('max_features', 1, len(feature_list))
+]
+
+search_results = automatic_test.random_search_hyperparameters(
+                                    regressors.RandomForestAlgorithm,
+                                    algo_args,
+                                    random_state,
+                                    train_sample_sets,
+                                    validation_sample_sets,
+                                    hyp_intervals,
+                                    30)
+
+sorted_search_results = sorted(search_results, key=lambda r: r[2]['mean_mse'])
+# Display the 10 best solutions
+for position_i, (try_i, hyp_values, rs) in enumerate(sorted_search_results[:10]):
+    print "#%d (Try %d) MSE: %.2f" % (position_i, try_i, rs['mean_mse'])
+    for param_name, param_value in sorted(hyp_values.items()):
+        print "%s: %d" % (param_name, param_value)
