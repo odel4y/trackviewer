@@ -7,7 +7,7 @@ from extract_features import get_intersection_angle, get_curve_secant_line,\
     get_predicted_line, _feature_types, get_rectified_mse
 from sklearn.metrics import mean_squared_error
 import sklearn.preprocessing
-import random
+import numpy.random as random
 import pickle
 import itertools
 import numpy as np
@@ -372,3 +372,34 @@ def test_parameter_variations(algo_class, args, varying_parameter, values, train
             params_mse[run_i][i] = rs[algo]['mean_mse']
     params_mse = np.mean(params_mse, axis=0)
     return params_mse
+
+def random_search_hyperparameters(AlgoClass, algo_args, random_state, train_sets, validation_sets, hyp_intervals, tries=100):
+    """Performs a random search with integer values on specified hyperparameters.
+    :param AlgoClass: Class of RandomForestAlgorithm
+    :param algo_args: All necessary arguments to RandomForestAlgorithm
+    :param random_state: Random state is used to determine parameter values and initialize RandomForestAlgorithm
+    :param train_sets: Training data sets
+    :param validation_sets: Validation data sets (cross-validation)
+    :param hyp_intervals: List of tuples of (param_name, low, high)
+    """
+    random.set_state(random_state)
+    search_results = []
+
+    for try_i in xrange(tries):
+        # Sample hyperparameters
+        hyp_values = {}
+        for param_name, low, high in hyp_intervals:
+            hyp_values[param_name] = int(random.uniform(low, high))
+
+        # Assemble Algorithm arguments
+        args = dict(
+            algo_args.items() + \
+            hyp_values.items() + \
+            [('random_state', random)]
+        )
+        algo = AlgoClass(**args)
+
+        test_results = get_result_statistics(test([algo], train_sets, validation_sets, cross_validation=True, print_results=False))
+        print "#%d MSE: %.2f" % (try_i, test_results[algo]['mean_mse'])
+        search_results.append((try_i, hyp_values, test_results[algo]))
+    return search_results
