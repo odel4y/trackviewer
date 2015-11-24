@@ -134,13 +134,17 @@ class InterpolatingSplineAlgorithm(automatic_test.PredictionAlgorithm):
         # Make a parametric quadratic spline with given knot vector
         x2, y2 = parametric_combined_spline(x, y, k=2, s=0.0)
         interpolating_spline_line = LineString(zip(x2, y2))
+        desired_entry_distance = sample['X'][_feature_types.index("track_distance_projected_along_normal_entry")]
+        interpolating_spline_line = rectify_line(interpolating_spline_line, sample['geometry']['entry_line'], sample['geometry']['exit_line'], False, False, desired_entry_distance, 0.)
         return interpolating_spline_line
 
 class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
-    def __init__(self, allow_rectification=False, allow_actual_speed=True):
+    def __init__(self, allow_rectification=False, allow_actual_speed=True, des_entry_dist=None, des_exit_dist=None):
         self.name = 'Alhajyaseen Algorithm'
         self.allow_rectification = allow_rectification # Move the line to accurately fit entry and exit distance
         self.allow_actual_speed = allow_actual_speed # Use the actual vehicle entry speed
+        self.des_entry_dist = des_entry_dist
+        self.des_exit_dist = des_exit_dist
 
     def predict(self, sample):
         features = self._calculate_intersection_features(sample)
@@ -202,6 +206,10 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
         else:
             desired_entry_distance = None
             desired_exit_distance = None
+        if self.des_entry_dist != None:
+            desired_entry_distance = self.des_entry_dist
+        if self.des_exit_dist != None:
+            desired_exit_distance = self.des_exit_dist
         curved_line = rectify_line(curved_line, sample['geometry']['entry_line'], sample['geometry']['exit_line'], False, False, desired_entry_distance, desired_exit_distance)
         return curved_line
 
