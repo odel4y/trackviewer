@@ -45,7 +45,7 @@ def get_partitioned_samples(samples, train_ratio, randomized=False):
     """Randomize the given samples and partition them in train and test
     samples using the train_ratio"""
     sample_count = len(samples)
-    print 'Total number of samples:', sample_count
+    # print 'Total number of samples:', sample_count
     train_sample_count = int(round(sample_count * train_ratio))
     indices = range(sample_count)
     if randomized:
@@ -115,12 +115,16 @@ def predict(algorithms, test_samples):
         for s in test_samples:
             y_true = s['y']
             y_pred = algo.predict(s)
-            mse = mean_squared_error(y_true, y_pred)
-            # mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
-            results[algo]['predictions'].append(y_pred)
-            results[algo]['mse'].append(mse)
-            peak_i = int(SAMPLE_RESOLUTION/2)
-            results[algo]['peak_errors'].append(abs(y_true[peak_i]-y_pred[peak_i]))
+            try:
+                mse = mean_squared_error(y_true, y_pred)
+                # mse = get_rectified_mse(y_pred, s['label']['selected_method'], s)
+                results[algo]['predictions'].append(y_pred)
+                results[algo]['mse'].append(mse)
+                peak_i = int(SAMPLE_RESOLUTION/2)
+                results[algo]['peak_errors'].append(abs(y_true[peak_i]-y_pred[peak_i]))
+            except Exception as e:
+                print "======", e
+                continue
     return results
 
 def predict_proba(algorithms, test_samples):
@@ -185,6 +189,12 @@ def show_intersection_plot(results, test_samples, results_proba={}, which_algori
             except:
                 plot_cases[worst_case_index] = "Worst case for " + algo.get_name()
     for plot_index, plot_title in plot_cases.iteritems():
+        cmap = plt.get_cmap('Paired')
+        rgbcolors = [
+        cmap(0.6),
+        (0.,0.,1.),
+        cmap(0.8)
+        ]
         predicted_radii = []
         predicted_proba = []
         labels = []
@@ -200,8 +210,8 @@ def show_intersection_plot(results, test_samples, results_proba={}, which_algori
                             'min_radius': results_proba[algo]['min_radius'],
                             'max_radius': results_proba[algo]['max_radius']
                         })
-        output_sample_features(s)
-        plot_intersection(s, predicted_radii, labels=labels, title=plot_title, orientation=orientation)
+        # output_sample_features(s)
+        plot_intersection(s, predicted_radii, rgbcolors=rgbcolors[:len(predicted_radii)], labels=labels, title=plot_title, orientation=orientation)
 
 def show_graph_plot(results, test_samples, results_proba={}, which_algorithms="all", which_samples="all"):
     print "Show graph plot..."
@@ -275,7 +285,7 @@ def output_formatted_result(results, output="console"):
             print 'Cumulated MSE:\t%.2f' % rs['cumulated_mse']
             print 'Minimum MSE:\t%.2f' % rs['min_mse']
             print 'Maximum MSE:\t%.2f' % rs['max_mse']
-            print 'Mean Peak Squared Error:\t%.2f +/- %.2f' % (rs['mean_peak_squared_error'], rs['std_peak_squared_error'])
+            # print 'Mean Peak Squared Error:\t%.2f +/- %.2f' % (rs['mean_peak_squared_error'], rs['std_peak_squared_error'])
 
 def test(algorithms, train_sample_sets, test_sample_sets, cross_validation=False, print_results=True):
     """General prediction quality test for algorithms with the option of cross validation"""
@@ -373,7 +383,7 @@ def test_parameter_variations(algo_class, args, varying_parameter, values, train
     params_mse = np.mean(params_mse, axis=0)
     return params_mse
 
-def random_search_hyperparameters(AlgoClass, algo_args, random_state, train_sets, validation_sets, hyp_intervals, tries=100):
+def random_search_hyperparameters(AlgoClass, algo_args, random_state, train_sets, validation_sets, hyp_intervals, tries=100, calc_train_error=False):
     """Performs a random search with integer values on specified hyperparameters.
     :param AlgoClass: Class of RandomForestAlgorithm
     :param algo_args: All necessary arguments to RandomForestAlgorithm
@@ -400,6 +410,11 @@ def random_search_hyperparameters(AlgoClass, algo_args, random_state, train_sets
         algo = AlgoClass(**args)
 
         test_results = get_result_statistics(test([algo], train_sets, validation_sets, cross_validation=True, print_results=False))
-        print "#%d MSE: %.2f" % (try_i, test_results[algo]['mean_mse'])
-        search_results.append((try_i, hyp_values, test_results[algo]))
+        if calc_train_error:
+            train_results = get_result_statistics(test([algo], train_sets, train_sets, cross_validation=True, print_results=False))
+            print "#%d MSE: %.2f CVE-TE: %.2f" % (try_i, test_results[algo]['mean_mse'], abs(test_results[algo]['mean_mse']-train_results[algo]['mean_mse']))
+            search_results.append((try_i, hyp_values, test_results[algo], train_results[algo]))
+        else:
+            print "#%d MSE: %.2f" % (try_i, test_results[algo]['mean_mse'])
+            search_results.append((try_i, hyp_values, test_results[algo]))
     return search_results

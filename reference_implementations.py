@@ -284,8 +284,8 @@ class AlhajyaseenAlgorithm(automatic_test.PredictionAlgorithm):
 
         if intersection_angle >= 0.0:
             # Right turn in left hand traffic
-            features['D_HN_IN'] = INT_DIST + LANE_WIDTH/2.0     # Distance from IP to hard nose at entry [m]
-            features['D_HN_OUT'] = INT_DIST + LANE_WIDTH/2.0    # Distance from IP to hard nose at exit [m]
+            features['D_HN_IN'] = INT_DIST     # Distance from IP to hard nose at entry [m]
+            features['D_HN_OUT'] = INT_DIST    # Distance from IP to hard nose at exit [m]
             features['MIN_D_HN'] = min(features['D_HN_IN'], features['D_HN_OUT'])    # Minimum of the two distances
         else:
             # Left turn in left hand traffic

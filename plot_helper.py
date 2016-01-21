@@ -18,14 +18,16 @@ import scipy.interpolate
 import scipy.stats
 
 sns.set_style("whitegrid")
+sns.set_context("paper", font_scale=1.8)
 
 def get_distributed_colors(number, colormap='Set1'):
     cmap = plt.get_cmap('Set1')
-    rgbcolors = [cmap(i) for i in np.linspace(0., 1., number)]
+    step = 0.2
+    rgbcolors = [cmap(i) for i in np.arange(0., step*(number+1), step)]
     return rgbcolors
 
 def plot_coords(x, y, color, label=None, linestyle='-'):
-    handle, = plt.plot(x,y, color=color, linestyle=linestyle, label=label)
+    handle, = plt.plot(x,y, color=color, linestyle=linestyle, label=label, linewidth=2.0)
     return handle
 
 def plot_line(color, line, label=None, linestyle='-'):
@@ -113,8 +115,8 @@ def get_heatmap_from_distances_all_predictors(predictions, entry_line, exit_line
     rbfi = RBFValley(rbfLineDist, rbfMeasureDist, 0.5)
 
     # Set up the grid to sample the RBF at
-    line_dist_min = 0.
-    line_dist_max = 2*INT_DIST
+    line_dist_min = -INT_DIST
+    line_dist_max = INT_DIST
     line_dist_resolution = 100
     measure_dist_min = -10.
     measure_dist_max = 10.
@@ -210,7 +212,7 @@ def plot_intersection(sample, predicted=[], rgbcolors=[], labels=[], label_metho
             Y = np.reshape(rot_coords[1], target_shape)
 
         ax = plt.gca()
-        p = ax.pcolormesh(X, Y, D, cmap="Oranges")
+        p = ax.pcolormesh(X, Y, D, cmap="Blues")
 
     plot_lines('k', entry_line, exit_line)
     if reference_lines:

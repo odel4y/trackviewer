@@ -59,7 +59,11 @@ def get_steps_from_sample(sample):
 
 class RandomForestAlgorithm(automatic_test.PredictionAlgorithm):
     def __init__(self, features=[], single_target_variable=False, **regressor_args):
-        self.name = 'Random Forest Regressor (Scikit)'
+        if single_target_variable:
+            pred_type = 'point-wise'
+        else:
+            pred_type = 'path-wise'
+        self.name = 'Random Forest Regressor (%s)' % pred_type
         _check_feature_availability(features)
 
         self.description = 'Regarded Features:\n- ' + '\n- '.join(features)
